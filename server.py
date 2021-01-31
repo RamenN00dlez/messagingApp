@@ -21,6 +21,7 @@ contact_names = []
 listcount = 0
 contact_lists = []
 
+#pring the current loaded contact configuration
 def print_config():
     print("Printing configuration...")
     print("Users (count =", usercount + "):")
@@ -35,10 +36,22 @@ def print_config():
 
 #save the current config file. return with appropriate response code
 def save(filename):
+    print("saving configuration to file: " + filename + "...")
     try:
-        return "SUCCESS"
+        f = open(filename, "w")
+        global usercount, contact_names, listcount, contact_lists
+        f.write(usercount + "\n")
+        for i in range(int(usercount)):
+            f.write(contact_names[i].name + "," + contact_names[i].ip + "," + contact_names[i].port + "\n")
+        f.write(listcount + "\n")
+        for l in range(int(listcount)):
+            f.write(contact_lists[l].name + "," + contact_lists[l].count + "\n")
+            for k in range(int(contact_lists[l].count)):
+                f.write(contact_lists[l].members[k].name + "," + contact_lists[l].members[k].ip + "," + contact_lists[l].members[k].port + "\n")
+        f.close()
+        return True
     except:
-        return "FAILURE"
+        return False
 
 #load a passed config file into the contacts. Only meant for startup
 def load(filename):
@@ -57,6 +70,7 @@ def load(filename):
             contact_lists[l].members.append(contact)
     f.close()
 
+#start the program here
 def main():
     #store the specified port number, if none was given, alert the user and exit the program
     if(len(sys.argv) > 1):
@@ -72,6 +86,8 @@ def main():
         load(sys.argv[2])
         print("Configuration loaded:")
         print_config()
+        save("dummy")
+
 
 if(__name__ == '__main__'):
     main()
