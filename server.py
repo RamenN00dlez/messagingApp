@@ -45,27 +45,6 @@ def print_config():
             print("\t\t" + contact_lists[l].members[k].name + "," + contact_lists[l].members[k].ip + "," + contact_lists[l].members[k].port)
     print("\n")
 
-#save the current config file. return with appropriate response code
-def save(filename):
-    dialog("Saving configuration to file: \033[1m" + filename + "\033[0m...")
-    try:
-        f = open(filename, "w")
-        global usercount, contact_names, listcount, contact_lists
-        f.write(usercount + "\n")
-        for i in range(int(usercount)):
-            f.write(contact_names[i].name + "," + contact_names[i].ip + "," + contact_names[i].port + "\n")
-        f.write(listcount + "\n")
-        for l in range(int(listcount)):
-            f.write(contact_lists[l].name + "," + contact_lists[l].count + "\n")
-            for k in range(int(contact_lists[l].count)):
-                f.write(contact_lists[l].members[k].name + "," + contact_lists[l].members[k].ip + "," + contact_lists[l].members[k].port + "\n")
-        f.close()
-        dialog("Configuration sucessfully saved to file \033[1m" + filename + "\033[0m.")
-        return "SUCCESS"
-    except:
-        dialog("Configuration save failed.")
-        return "FAILURE"
-
 #load a passed config file into the contacts. Only meant for startup
 def load(filename):
     try:
@@ -111,20 +90,6 @@ def load(filename):
         listcount = "0"
         contact_names = []
         contact_lists = []
-        return "FAILURE"
-
-#add the user with the passed name to the specified contact list
-def join(list_name, name):
-    dialog("Attempting to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
-    global usercount, contact_names, listcount, contact_lists
-    lst = None
-    #find the list, if it doesnt exist, fail.
-    for l in range(int(listcount)):
-        if(contact_lists[l].name == list_name):
-            lst = contact_lists[l]
-            break
-    if(lst == None):
-        dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
         return "FAILURE"
         
     #check if the user is already in the list, if they do, fail.
@@ -177,6 +142,51 @@ def create(list_name):
     dialog("Contact list \033[1m" + list_name + "\033[0m successfully created.")
     return "SUCCESS"
 
+#return the contact lists and their members.
+def query_lists():
+    dialog("Querying contact list.")
+    global listcount, contact_lists
+    ret = listcount + "\n"
+    for lst in contact_lists:
+        ret += lst.name + "," + lst.count + "\n"
+        for member in lst.members:
+            ret += member.name + "," + member.ip + ","  + member.port + "\n"
+    return ret
+
+#add the user with the passed name to the specified contact list
+def join(list_name, name):
+    dialog("Attempting to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
+    global usercount, contact_names, listcount, contact_lists
+    lst = None
+    #find the list, if it doesnt exist, fail.
+    for l in range(int(listcount)):
+        if(contact_lists[l].name == list_name):
+            lst = contact_lists[l]
+            break
+    if(lst != None):
+        for contact in contact_names:
+            if(contact.name == name):
+                lst.members.append(contact)
+                lst.count = str(int(lst.count) + 1)
+                dialog("Successfully added user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
+                return "SUCCESS"
+    dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
+    return "FAILURE"
+
+#remove the user with the given name from the specified list.
+def leave(list_name, name):
+    dialog("Attempting to remove user \033[1m" + name + "\033[0m from contact list \033[1m" + list_name + "\033[0m.")
+    global contact_lists
+    for lst in contact_lists:
+        if(lst.name == list_name):
+            for k in range(int(lst.members)):
+                if(lst.members[k].name == name):
+                    del contact_lists[k]
+                    dialog("Successfully removed user \033[1m" + name + "\033[0m from contact list \033[1m" + list_name + "\033[0m.")
+                    return "SUCCESS"
+    dialog("Failed to remove user \033[1m" + name + "\033[0m from contact list \033[1m" + list_name + "\033[0m.")
+    return "FAILURE"
+
 #remove a contact name from the active users list and any contact-list they are in
 #TODO: check if user is in an ongoing IM. return failure if they are.
 def exit(name):
@@ -205,6 +215,28 @@ def exit(name):
         listcount = tmplstct
         dialog("Failed to remove user \033[1m" + name + "\033[0m.")
         return "FAILURE"
+
+#save the current config file. return with appropriate response code
+def save(filename):
+    dialog("Saving configuration to file: \033[1m" + filename + "\033[0m...")
+    try:
+        f = open(filename, "w")
+        global usercount, contact_names, listcount, contact_lists
+        f.write(usercount + "\n")
+        for i in range(int(usercount)):
+            f.write(contact_names[i].name + "," + contact_names[i].ip + "," + contact_names[i].port + "\n")
+        f.write(listcount + "\n")
+        for l in range(int(listcount)):
+            f.write(contact_lists[l].name + "," + contact_lists[l].count + "\n")
+            for k in range(int(contact_lists[l].count)):
+                f.write(contact_lists[l].members[k].name + "," + contact_lists[l].members[k].ip + "," + contact_lists[l].members[k].port + "\n")
+        f.close()
+        dialog("Configuration sucessfully saved to file \033[1m" + filename + "\033[0m.")
+        return "SUCCESS"
+    except:
+        dialog("Configuration save failed.")
+        return "FAILURE"
+
 
 
 #start the program here
