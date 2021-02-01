@@ -104,17 +104,44 @@ def load(filename):
         return True
     except:
         print("[" + datetime.now().strftime("%H:%M:%S") + "] Configuration load failed.")
+        usercount = "0"
+        listcount = "0"
         contact_names = []
         contact_lists = []
         return False
 
 #remove a contact name from the active users list and any contact-list they are in
 def exit(name):
-    try:
-        
+    global usercount, listcount, contact_names, contact_lists 
+    tmpusrct = usercount
+    tmplstct = listcount
+    #try:
+    if(True):
+        print("[" + datetime.now().strftime("%H:%M:%S") + "] Removing user " + name + "...")
+        #remove the user from the contacts list
+        for i in range(int(usercount)):
+            if(contact_names[i].name == name):
+                del contact_names[i]
+                usercount = str(int(usercount)-1)
+                break
+        #remove the user fromo any contact lists they were in
+        for l in range(int(listcount)):
+            for k in range(int(contact_lists[l].count)):
+                if(contact_lists[l].members[k].name == name):
+                    del (contact_lists[l].members[k])
+                    contact_lists[l].count = str(int(contact_lists[l].count)-1)
+                    break
+        print("[" + datetime.now().strftime("%H:%M:%S") + "] User " + name + " was successfully removed.")
         return True
+    try:
+        print("fuck")
     except:
+        usercount = tmpusrct
+        listcount = tmplstct
+        print("[" + datetime.now().strftime("%H:%M:%S") + "] Failed to remove user " + name + ".")
         return False
+
+
 #start the program here
 def main():
     #store the specified port number, if none was given, alert the user and exit the program
@@ -131,7 +158,9 @@ def main():
         load(sys.argv[2])
         print("Configuration loaded:")
         print_config()
-        save("dummy")
+        save("before")
+        exit("gabe")
+        save("after")
 
 
 if(__name__ == '__main__'):
