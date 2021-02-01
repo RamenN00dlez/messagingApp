@@ -23,9 +23,9 @@ class Person:
 
 serverPort = -1
 #name, list-name,
-usercount = 0
+usercount = "0"
 contact_names = []
-listcount = 0
+listcount = "0"
 contact_lists = []
 
 #print a server dialog message
@@ -132,6 +132,21 @@ def register(name, ip, port):
     print_config()
     return True
 
+#create a new contact list, return failure if the list already exists or number of maximum lists exeeded
+def create(list_name):
+    dialog("Attempting to create contact list with name = \033[1m" + list_name + "\033[0m.")
+    global listcount, contact_lists
+    #check if a contact list of the given name exists
+    for i in range(int(listcount)):
+        if(contact_lists[i].name == list_name):
+            dialog("Failed to create contact list.")
+            return False
+    lst = List([list_name, "0"])
+    contact_lists.append(lst)
+    listcount = str(int(listcount) + 1)
+    dialog("Contact list \033[1m" + list_name + "\033[0m successfully created.")
+    return True
+
 #remove a contact name from the active users list and any contact-list they are in
 #TODO: check if user is in an ongoing IM. return failure if they are.
 def exit(name):
@@ -179,12 +194,16 @@ def main():
     if(len(sys.argv) > 2):
         print("Loading contacts from list: " + sys.argv[2] + "...")
         load(sys.argv[2])
-        print("Configuration loaded:")
-        print_config()
-        save("before")
-        exit("gabe")
-        save("after")
-        register("fuckwad", "192.168.192.256", "60000")
+    print_config()
+    save("before")
+    exit("gabe")
+    save("after")
+    register("noob_master69", "192.168.192.255", "60000")
+    create("newlist")
+    print_config()
+    create("otherlist")
+    print_config()
+    save("edgetest")
 
 
 if(__name__ == '__main__'):
