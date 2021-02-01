@@ -113,6 +113,36 @@ def load(filename):
         contact_lists = []
         return "FAILURE"
 
+#add the user with the passed name to the specified contact list
+def join(list_name, name):
+    dialog("Attempting to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
+    global usercount, contact_names, listcount, contact_lists
+    lst = None
+    #find the list, if it doesnt exist, fail.
+    for l in range(int(listcount)):
+        if(contact_lists[l].name == list_name):
+            lst = contact_lists[l]
+            break
+    if(lst == None)
+        dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
+        return "FAILURE"
+        
+    #check if the user is already in the list, if they do, fail.
+    for k in range(int(lst.count)):
+        if(lst.members[k].name == name):
+            dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
+            return "FAILURE"
+    #find the user in the contact list, succeed if found (and added)
+    for i in range(int(usercount)):
+        if(contact_names[i].name == name):
+            lst.append(contact_names[i])
+            lst.count = str(int(lst.count) + 1)
+            return "SUCCESS"
+    dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
+    return "FAILURE"
+
+
+
 #add a user to the contact list. Failure if the user already exists
 def register(name, ip, port):
     dialog("Attempting to add user with details:\n\t\tname = \033[1m" + name + "\033[0m\n\t\tip   = \033[1m" + ip + "\033[0m\n\t\tport = \033[1m" + port + "\033[0m\n")
