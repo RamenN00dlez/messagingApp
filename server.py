@@ -123,7 +123,7 @@ def join(list_name, name):
         if(contact_lists[l].name == list_name):
             lst = contact_lists[l]
             break
-    if(lst == None)
+    if(lst == None):
         dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
         return "FAILURE"
         
@@ -135,7 +135,7 @@ def join(list_name, name):
     #find the user in the contact list, succeed if found (and added)
     for i in range(int(usercount)):
         if(contact_names[i].name == name):
-            lst.append(contact_names[i])
+            lst.members.append(contact_names[i])
             lst.count = str(int(lst.count) + 1)
             return "SUCCESS"
     dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
