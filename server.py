@@ -28,7 +28,7 @@ contact_names = []
 listcount = 0
 contact_lists = []
 
-#pring the current loaded contact configuration
+#prinr the current loaded contact configuration
 def print_config():
     print("Printing configuration...")
     print("Users (count =", usercount + "):")
@@ -41,10 +41,13 @@ def print_config():
             print("\t\t" + contact_lists[l].members[k].name + "," + contact_lists[l].members[k].ip + "," + contact_lists[l].members[k].port)
     print("\n")
     
+#print a server dialog message
+def dialog(message):
+    print('\033[93m[' + datetime.now().strftime("%H:%M:%S") + "]\033[0m " + message)
 
 #save the current config file. return with appropriate response code
 def save(filename):
-    print("[" + datetime.now().strftime("%H:%M:%S") + "] Saving configuration to file: " + filename + "...")
+    dialog("Saving configuration to file: \033[1m" + filename + "\033[0m...")
     try:
         f = open(filename, "w")
         global usercount, contact_names, listcount, contact_lists
@@ -57,16 +60,16 @@ def save(filename):
             for k in range(int(contact_lists[l].count)):
                 f.write(contact_lists[l].members[k].name + "," + contact_lists[l].members[k].ip + "," + contact_lists[l].members[k].port + "\n")
         f.close()
-        print("[" + datetime.now().strftime("%H:%M:%S") + "] Configuration file " + filename + " successfully saved.")
+        dialog("Configuration sucessfully saved to file \033[1m" + filename + "\033[0m.")
         return True
     except:
-        print("[" + datetime.now().strftime("%H:%M:%S") + "] Configuration save failed.")
+        dialog("Configuration save failed.")
         return False
 
 #load a passed config file into the contacts. Only meant for startup
 def load(filename):
     try:
-        print("[" + datetime.now().strftime("%H:%M:%S") + "] Loading configuration from file: " + filename + "...")
+        dialog("Loading configuration from file: \033[1m" + filename + "\033[0m...")
         f = open(filename, "r")
         global usercount, contact_names, listcount, contact_lists
         usercount = f.readline().strip()
@@ -75,7 +78,7 @@ def load(filename):
             person = Person(f.readline().strip().split(","))
             #If a user's IP is not a valid address, fail.
             if(re.match(IPv4, person.ip) == None or re.match(Port, person.port) == None):
-                print("[" + datetime.now().strftime("%H:%M:%S") + "] Configuration load failed.")
+                dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
                 usercount = "0"
                 listcount = "0"
                 contact_names = []
@@ -92,7 +95,7 @@ def load(filename):
                 contact = Person(f.readline().strip().split(","))
                 #If a user's IP is not a valid address, fail.
                 if(re.match(IPv4, contact.ip) == None or re.match(Port, contact.port) == None):
-                    print("[" + datetime.now().strftime("%H:%M:%S") + "] Configuration load failed.")
+                    dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
                     usercount = "0"
                     listcount = "0"
                     contact_names = []
@@ -100,10 +103,10 @@ def load(filename):
                     return False
                 contact_lists[l].members.append(contact)
         f.close()
-        print("[" + datetime.now().strftime("%H:%M:%S") + "] Configuration file: " + filename + " successfully loaded.")
+        dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
         return True
     except:
-        print("[" + datetime.now().strftime("%H:%M:%S") + "] Configuration load failed.")
+        dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
         usercount = "0"
         listcount = "0"
         contact_names = []
@@ -115,9 +118,8 @@ def exit(name):
     global usercount, listcount, contact_names, contact_lists 
     tmpusrct = usercount
     tmplstct = listcount
-    #try:
-    if(True):
-        print("[" + datetime.now().strftime("%H:%M:%S") + "] Removing user " + name + "...")
+    try:
+        dialog("Attempting to remove user \033[1m" + name + "\033[0m...")
         #remove the user from the contacts list
         for i in range(int(usercount)):
             if(contact_names[i].name == name):
@@ -131,14 +133,12 @@ def exit(name):
                     del (contact_lists[l].members[k])
                     contact_lists[l].count = str(int(contact_lists[l].count)-1)
                     break
-        print("[" + datetime.now().strftime("%H:%M:%S") + "] User " + name + " was successfully removed.")
+        dialog("User \033[1m" + name + "\033[0m was successfully removed.")
         return True
-    try:
-        print("fuck")
     except:
         usercount = tmpusrct
         listcount = tmplstct
-        print("[" + datetime.now().strftime("%H:%M:%S") + "] Failed to remove user " + name + ".")
+        dialog("Failed to remove user \033[1m" + name + "\033[0m.")
         return False
 
 
@@ -147,6 +147,9 @@ def main():
     #store the specified port number, if none was given, alert the user and exit the program
     if(len(sys.argv) > 1):
         serverPort = sys.argv[1]
+        if(re.match(Port, serverPort) == None):
+            print("ERROR: Port number must be in the range 1024-65353. Additional restrictions to port range may apply to usage.")
+            sys.exit()
     else:
         print("ERROR: Port number must be provided\n[./server.py <port number> (contact list)]\nport number necessary, contact list file is optional.\n")
         sys.exit()
