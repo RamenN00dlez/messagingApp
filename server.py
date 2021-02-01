@@ -28,9 +28,13 @@ contact_names = []
 listcount = 0
 contact_lists = []
 
-#prinr the current loaded contact configuration
+#print a server dialog message
+def dialog(message):
+    print('\033[93m[' + datetime.now().strftime("%H:%M:%S") + "]\033[0m " + message)
+
+#print the current loaded contact configuration
 def print_config():
-    print("Printing configuration...")
+    print("Current Configuration:")
     print("Users (count =", usercount + "):")
     for i in range(int(usercount)):
         print("\t" + contact_names[i].name + "," + contact_names[i].ip + "," + contact_names[i].port)
@@ -40,10 +44,6 @@ def print_config():
         for k in range(int(contact_lists[l].count)):
             print("\t\t" + contact_lists[l].members[k].name + "," + contact_lists[l].members[k].ip + "," + contact_lists[l].members[k].port)
     print("\n")
-    
-#print a server dialog message
-def dialog(message):
-    print('\033[93m[' + datetime.now().strftime("%H:%M:%S") + "]\033[0m " + message)
 
 #save the current config file. return with appropriate response code
 def save(filename):
@@ -103,7 +103,7 @@ def load(filename):
                     return False
                 contact_lists[l].members.append(contact)
         f.close()
-        dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
+        dialog("Successfully loaded configuration file \033[1m" + filename + "\033[0m.")
         return True
     except:
         dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
@@ -113,7 +113,27 @@ def load(filename):
         contact_lists = []
         return False
 
+#add a user to the contact list. Failure if the user already exists
+def register(name, ip, port):
+    dialog("Attempting to add user with details:\n\t\tname = \033[1m" + name + "\033[0m\n\t\tip   = \033[1m" + ip + "\033[0m\n\t\tport = \033[1m" + port + "\033[0m\n")
+    if(re.match(IPv4, ip) == None or re.match(Port, port) == None):
+        dialog("Failed to add user \033[1m" + name + "\033[0m.")
+        return False
+    global usercount, contact_names
+    for i in range(int(usercount)):
+        #check if the username is taken or not.
+        if(contact_names[i].name == name or (contact_names[i].ip == ip and contact_names[i].port == port)):
+            dialog("Failed to add user \033[1m" + name + "\033[0m.")
+            return False
+    #the user is not present, add them to the list.
+    contact = Person([name, ip, port])
+    contact_names.append(contact)
+    usercount = str(int(usercount) + 1)
+    print_config()
+    return True
+
 #remove a contact name from the active users list and any contact-list they are in
+#TODO: check if user is in an ongoing IM. return failure if they are.
 def exit(name):
     global usercount, listcount, contact_names, contact_lists 
     tmpusrct = usercount
@@ -164,6 +184,7 @@ def main():
         save("before")
         exit("gabe")
         save("after")
+        register("fuckwad", "192.168.192.256", "60000")
 
 
 if(__name__ == '__main__'):
