@@ -4,6 +4,7 @@ import sys
 from datetime import datetime
 from socket import *
 import re
+from multiprocessing import Process
 
 #regular expression to match an IPv4 address
 IPv4 = "^(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
@@ -21,8 +22,8 @@ class Person:
         self.ip = data[1]
         self.port = data[2]
 
+global p
 serverPort = -1
-#name, list-name,
 usercount = "0"
 contact_names = []
 listcount = "0"
@@ -237,10 +238,82 @@ def save(filename):
         dialog("Configuration save failed.")
         return "FAILURE"
 
+#validate a command, execute it if valid.
+def verify_input(cmd):
+    dialog("Executing serverside command...")
+    cmd = cmd.split(" ")
+    cmdc = len(cmd)
+    if(cmd[0] == "register" and cmdc == 4):
+        if(re.match(IPv4, cmd[2]) != None and re.match(Port, cmd[3])):
+            register(cmd[1], cmd[2], cmd[3])
+    elif(cmd[0] == "help" and cmdc == 1):
+        print("\tregister <contact-name> <IP-address> <port>\n\tcreate <contact-list-name>\n\tquery-lists\n\tjoin <contact-list-name> <contact-name>\n\tleave <contact-list-name> <contact-name>\n\texit <contact-name>\n\tprint-config\n\tsave <file-name>\n\tquit")
+    elif(cmd[0] == "create" and cmdc == 2):
+        create(cmd[1])
+    elif(cmd[0] == "query-lists" and cmdc == 1):
+        print(query_lists())
+    elif(cmd[0] == "join" and cmdc == 3):
+        join(cmd[1], cmd[2])
+    elif(cmd[0] == "leave" and cmdc == 3):
+        leave(cmd[1], cmd[2])
+    elif(cmd[0] == "exit" and cmdc == 2):
+        exit(cmd[1])
+    elif(cmd[0] == "save" and cmdc == 2):
+        save(cmd[1])
+    elif(cmd[0] == "print-config" and cmdc == 1):
+        print_config()
+    elif(cmd[0] == "quit" and cmdc == 1):
+        sure = None
+        while(sure != "yes" and sure != "no"):
+            if(sure != None):
+                print("Please enter 'yes' or 'no'")
+            sure = input("Are you sure?\nAny unsaved entries will be lost.\n> ").lower()
+        #cleanly exit the parallel processes
+        if(sure == "yes"):
+            global p
+            p.terminate()
+            p.join()
+            sys.exit()
+    return "Invalid command. Type 'help' for help."
 
+#process a command
+def command(cmd):
+    if(cmd[0] ==  "register"):
+        return register(cmd[1], cmd[2], cmd[3])
+    elif(cmd[0] == "create"):
+        return create(cmd[1])
+    elif(cmd[0] == "query-lists"):
+        return query_lists()
+    elif(cmd[0] == "join"):
+        return join(cmd[1], cmd[2])
+    elif(cmd[0] == "leave"):
+        return leave(cmd[1], cmd[2])
+    elif(cmd[0] == "exit"):
+        return exit(cmd[1])
+    elif(cmd[0] == "im-start"):
+        return im_start(cmd[1], cmd[2])
+    elif(cmd[0] == "im-complete"):
+        return im_complete(cmd[1], cmd[2])
+    elif(cmd[0] == "save"):
+        return save(cmd[1])
+
+#continuously check for input
+def listen(serverPort):
+    serverSocket = socket(AF_INET, SOCK_DGRAM)
+    serverSocket.bind(('', serverPort))
+    dialog("\033[92mServer ready to receive...\033[0m")
+    while(True):
+        recv, clientAddr = serverSocket.recvfrom(2048)
+        if recv:
+            dialog("Message received from: \033[1m" + clientAddr[0] + "\033[0m\n\t\t" + recv.decode())
+            response = ""
+            cmd = recv.decode().split(" ")
+            command(cmd)
+            serverSocket.sendto(response.encode(), clientAddr)
 
 #start the program here
 def main():
+    global p
     #store the specified port number, if none was given, alert the user and exit the program
     if(len(sys.argv) > 1):
         serverPort = int(sys.argv[1])
@@ -256,35 +329,15 @@ def main():
     if(len(sys.argv) > 2):
         print("Loading contacts from list: " + sys.argv[2] + "...")
         load(sys.argv[2])
+    
+    #listen for clients
+    p = Process(target=listen, args=(serverPort,))
+    p.start()
 
-    serverSocket = socket(AF_INET, SOCK_DGRAM)
-    serverSocket.bind(('', serverPort))
-    dialog("\033[92mServer ready to receive...\033[0m")
+    #listen for serverside commands
     while(True):
-        recv, clientAddr = serverSocket.recvfrom(2048)
-        if recv:
-            dialog("Message received from: \033[1m" + clientAddr[0] + "\033[0m\n\t\t" + recv.decode())
-            response = ""
-            cmd = recv.decode().split(" ")
-            if(cmd[0] ==  "register"):
-                response = register(cmd[1], cmd[2], cmd[3])
-            elif(cmd[0] == "create"):
-                response = create(cmd[1])
-            elif(cmd[0] == "query-lists"):
-                response = query_lists()
-            elif(cmd[0] == "join"):
-                response = join(cmd[1], cmd[2])
-            elif(cmd[0] == "leave"):
-                response = leave(cmd[1], cmd[2])
-            elif(cmd[0] == "exit"):
-                response = exit(cmd[1])
-            elif(cmd[0] == "im-start"):
-                response = im_start(cmd[1], cmd[2])
-            elif(cmd[0] == "im-complete"):
-                response = im_complete(cmd[1], cmd[2])
-            elif(cmd[0] == "save"):
-                response = save(cmd[1])
-            serverSocket.sendto(response.encode(), clientAddr)
-
+        cmd = input()
+        verify_input(cmd)
+    
 if(__name__ == '__main__'):
     main()
