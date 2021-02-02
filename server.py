@@ -14,6 +14,8 @@ class List:
     def __init__(self, arr):
         self.name = arr[0]
         self.count = arr[1]
+        self.in_chat = False
+        self.initiator = ""
         self.members = []
 
 class Person:
@@ -157,6 +159,13 @@ def query_lists():
 #add the user with the passed name to the specified contact list
 def join(list_name, name):
     dialog("Attempting to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
+    #if the user is in a chat, they cannot exit.
+    for lst in contact_lists:
+        if(lst.in_chat):
+            for member in lst.members:
+                if(member.name == name):
+                    dialog("Failed to remove user \033[1m" + name + "\033[0m.")
+                    return "FAILURE"
     global usercount, contact_names, listcount, contact_lists
     lst = None
     #find the list, if it doesnt exist, fail.
@@ -177,6 +186,13 @@ def join(list_name, name):
 #remove the user with the given name from the specified list.
 def leave(list_name, name):
     dialog("Attempting to remove user \033[1m" + name + "\033[0m from contact list \033[1m" + list_name + "\033[0m.")
+    #if the user is in a chat, they cannot exit.
+    for lst in contact_lists:
+        if(lst.in_chat):
+            for member in lst.members:
+                if(member.name == name):
+                    dialog("Failed to remove user \033[1m" + name + "\033[0m.")
+                    return "FAILURE"
     global contact_lists
     for lst in contact_lists:
         if(lst.name == list_name):
@@ -189,33 +205,47 @@ def leave(list_name, name):
     return "FAILURE"
 
 #remove a contact name from the active users list and any contact-list they are in
-#TODO: check if user is in an ongoing IM. return failure if they are.
+#if the user is in an ongoing IM, they cannot leave until the chat is terminated.
 def exit(name):
-    global usercount, listcount, contact_names, contact_lists 
-    tmpusrct = usercount
-    tmplstct = listcount
-    try:
-        dialog("Attempting to remove user \033[1m" + name + "\033[0m...")
-        #remove the user from the contacts list
-        for i in range(int(usercount)):
-            if(contact_names[i].name == name):
-                del contact_names[i]
-                usercount = str(int(usercount)-1)
+    global contact_names, contact_lists 
+    removed = False
+    dialog("Attempting to remove user \033[1m" + name + "\033[0m...")
+    #if the user is in a chat, they cannot exit.
+    for lst in contact_lists:
+        if(lst.in_chat):
+            for member in lst.members:
+                if(member.name == name):
+                    dialog("Failed to remove user \033[1m" + name + "\033[0m.")
+                    return "FAILURE"
+    #remove the user from the contacts list
+    for contact in contact_names:
+        if(contact.name == name):
+            del contact
+            usercount = str(int(usercount)-1)
+            removed = True
+            break
+    #remove the user from any contact lists they were in
+    for lst in contact_lists:
+        for member in lst.members:
+            if(member.name == name):
+                del member
+                lst.count = str(int(lst.count)-1)
+                removed = True
                 break
-        #remove the user fromo any contact lists they were in
-        for l in range(int(listcount)):
-            for k in range(int(contact_lists[l].count)):
-                if(contact_lists[l].members[k].name == name):
-                    del (contact_lists[l].members[k])
-                    contact_lists[l].count = str(int(contact_lists[l].count)-1)
-                    break
+    if(removed):
         dialog("User \033[1m" + name + "\033[0m was successfully removed.")
         return "SUCCESS"
-    except:
-        usercount = tmpusrct
-        listcount = tmplstct
+    else:
         dialog("Failed to remove user \033[1m" + name + "\033[0m.")
         return "FAILURE"
+
+#Begin an IM chat session with users in a certain contact list
+def im_start(list_name, name):
+    dialog("Attempting to start an IM chat session for \033[1m" + list_name"\033[0m initiated by \033[1m" + name + "\033[0m.")
+
+#Termainate an IM chat session with users in a certain contact list
+def im_complete(list_name, name):
+    dialog("Attempting to start an IM chat session for \033[1m" + list_name"\033[0m initiated by \033[1m" + name + "\033[0m.")
 
 #save the current config file. return with appropriate response code
 def save(filename):
