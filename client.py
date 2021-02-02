@@ -12,6 +12,7 @@ Port = "^6535[0-3]|653[0-4][0-9]|65[0-2][0-9][0-9]|6[0-4][0-9][0-9][0-9]|5[0-9][
 serverip = ""
 serverport = ""
 username = ""
+registered = False
 
 #Verify whether or not a command is valid. True if yes, False if no
 def verify_input(cmd):
@@ -20,6 +21,8 @@ def verify_input(cmd):
     if(cmd[0] == "register" and cmdc == 4):
         if(re.match(IPv4, cmd[2]) != None and re.match(Port, cmd[3])):
             return True
+    elif(cmd[0] == "help" and cmdc == 1):
+        print("\tregister <contact-name> <IP-address> <port>\n\tcreate <contact-list-name>\n\tquery-lists\n\tjoin <contact-list-name> <contact-name>\n\tleave <contact-list-name> <contact-name>\n\texit <contact-name>\n\tim-start <contact-list-name> <contact-name>\n\tim-complete <contact-list-name> <contact-name>\n\tsave <file-name>\n\tquit")
     elif(cmd[0] == "create" and cmdc == 2):
         return True
     elif(cmd[0] == "query-lists" and cmdc == 1):
@@ -36,8 +39,8 @@ def verify_input(cmd):
         return True
     elif(cmd[0] == "save" and cmdc == 2):
         return True
-    elif(cmd[0] == "help" and cmdc == 1):
-        print("\tregister <contact-name> <IP-address> <port>\n\tcreate <contact-list-name>\n\tquery-lists\n\tjoin <contact-list-name> <contact-name>\n\tleave <contact-list-name> <contact-name>\n\texit <contact-name>\n\tim-start <contact-list-name> <contact-name>\n\tim-complete <contact-list-name> <contact-name>\n\tsave <file-name>")
+    elif(cmd[0] == "quit" and cmdc == 1):
+        sys.exit()
     return False
     
 def main():
@@ -55,8 +58,6 @@ def main():
             clientSocket.sendto(msg.encode(), (serverip, serverport))
             response, addr = clientSocket.recvfrom(2048)
             print(response.decode())
-            if(msg.split(" ")[0] == "exit"):
-                sys.exit()
         else:
             print("Invalid syntax. Command not sent.")
 

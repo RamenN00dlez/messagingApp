@@ -148,9 +148,9 @@ def query_lists():
     global listcount, contact_lists
     ret = listcount + "\n"
     for lst in contact_lists:
-        ret += lst.name + "," + lst.count + "\n"
+        ret += lst.name + ", " + lst.count + "\n"
         for member in lst.members:
-            ret += member.name + "," + member.ip + ","  + member.port + "\n"
+            ret += member.name + "\n"
     return ret
 
 #add the user with the passed name to the specified contact list
@@ -262,28 +262,29 @@ def main():
     dialog("\033[92mServer ready to receive...\033[0m")
     while(True):
         recv, clientAddr = serverSocket.recvfrom(2048)
-        dialog("Message received from: \033[1m" + clientAddr[0] + "\033[0m\n\t\t" + recv.decode())
-        response = ""
-        cmd = recv.decode().split(" ")
-        if(cmd[0] ==  "register"):
-            response = register(cmd[1], cmd[2], cmd[3])
-        elif(cmd[0] == "create"):
-            response = create(cmd[1])
-        elif(cmd[0] ==  "query-lists"):
-            response = query_lists()
-        elif(cmd[0] == "join"):
-            response = join(cmd[1], cmd[2])
-        elif(cmd[0] ==  "leave"):
-            response = leave(cmd[1], cmd[2])
-        elif(cmd[0] == "exit"):
-            response = exit(cmd[1])
-        elif(cmd[0] ==  "im-start"):
-            response = im_start(cmd[1], cmd[2])
-        elif(cmd[0] == "im-complete"):
-            response = im_complete(cmd[1], cmd[2])
-        elif(cmd[0] ==  "save"):
-            response = save(cmd[1])
-        serverSocket.sendto(response.encode(), clientAddr)
+        if recv:
+            dialog("Message received from: \033[1m" + clientAddr[0] + "\033[0m\n\t\t" + recv.decode())
+            response = ""
+            cmd = recv.decode().split(" ")
+            if(cmd[0] ==  "register"):
+                response = register(cmd[1], cmd[2], cmd[3])
+            elif(cmd[0] == "create"):
+                response = create(cmd[1])
+            elif(cmd[0] == "query-lists"):
+                response = query_lists()
+            elif(cmd[0] == "join"):
+                response = join(cmd[1], cmd[2])
+            elif(cmd[0] == "leave"):
+                response = leave(cmd[1], cmd[2])
+            elif(cmd[0] == "exit"):
+                response = exit(cmd[1])
+            elif(cmd[0] == "im-start"):
+                response = im_start(cmd[1], cmd[2])
+            elif(cmd[0] == "im-complete"):
+                response = im_complete(cmd[1], cmd[2])
+            elif(cmd[0] == "save"):
+                response = save(cmd[1])
+            serverSocket.sendto(response.encode(), clientAddr)
 
 if(__name__ == '__main__'):
     main()
