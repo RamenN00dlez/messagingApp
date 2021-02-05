@@ -6,8 +6,6 @@ from socket import *
 
 #regular expression to match an IPv4 address
 IPv4 = "^(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
-#Regular expression to match port number in the range 1024-65353
-Port = "^6535[0-3]|653[0-4][0-9]|65[0-2][0-9][0-9]|6[0-4][0-9][0-9][0-9]|5[0-9][0-9][0-9][0-9]|4[0-9][0-9][0-9][0-9]|3[0-9][0-9][0-9][0-9]|2[0-9][0-9][0-9][0-9]|1[0-9][0-9][0-9][0-9]|[2-9][0-9][0-9][0-9]|102[4-9]|10[3-9][0-9]|1[1-9][0-9][0-9]$"
 
 serverip = ""
 serverport = ""
@@ -19,7 +17,7 @@ def verify_input(cmd):
     cmd = cmd.split(" ")
     cmdc = len(cmd)
     if(cmd[0] == "register" and cmdc == 4):
-        if(re.match(IPv4, cmd[2]) != None and re.match(Port, cmd[3])):
+        if(re.match(IPv4, cmd[2]) != None and 1023 < int(cmd[3]) and int(cmd[3]) < 65354):
             return True
     elif(cmd[0] == "help" and cmdc == 1):
         print("\tregister <contact-name> <IP-address> <port>\n\tcreate <contact-list-name>\n\tquery-lists\n\tjoin <contact-list-name> <contact-name>\n\tleave <contact-list-name> <contact-name>\n\texit <contact-name>\n\tim-start <contact-list-name> <contact-name>\n\tim-complete <contact-list-name> <contact-name>\n\tsave <file-name>\n\tquit")
@@ -41,6 +39,8 @@ def verify_input(cmd):
         return True
     elif(cmd[0] == "quit" and cmdc == 1):
         sys.exit()
+    else:
+        print("Invalid Command.\n\tSee <help> for a list of commands.")
     return False
     
 def main():
@@ -51,6 +51,9 @@ def main():
     response = ""
     serverip = sys.argv[1]
     serverport = int(sys.argv[2])
+    if(re.match(IPv4, serverip) is None or not (1023 < serverport and serverport < 65354)):
+            print("Invalid server IP and/or port number.")
+            sys.exit()
     clientSocket = socket(AF_INET, SOCK_DGRAM)
     while(True):
         msg = input("Please enter command.\n> \033[994m")
@@ -58,8 +61,6 @@ def main():
             clientSocket.sendto(msg.encode(), (serverip, serverport))
             response, addr = clientSocket.recvfrom(2048)
             print(response.decode())
-        else:
-            print("Invalid syntax. Command not sent.")
 
 
 if(__name__ == '__main__'):

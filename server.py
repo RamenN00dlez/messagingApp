@@ -8,8 +8,7 @@ from multiprocessing import Process
 
 #regular expression to match an IPv4 address
 IPv4 = "^(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
-#Regular expression to match port number in the range 1024-65353
-Port = "^6535[0-3]|653[0-4][0-9]|65[0-2][0-9][0-9]|6[0-4][0-9][0-9][0-9]|5[0-9][0-9][0-9][0-9]|4[0-9][0-9][0-9][0-9]|3[0-9][0-9][0-9][0-9]|2[0-9][0-9][0-9][0-9]|1[0-9][0-9][0-9][0-9]|[2-9][0-9][0-9][0-9]|102[4-9]|10[3-9][0-9]|1[1-9][0-9][0-9]$"
+
 class List:
     def __init__(self, arr):
         self.name = arr[0]
@@ -26,10 +25,10 @@ class Person:
 
 global p
 serverPort = -1
-usercount = "0"
-contact_names = []
-listcount = "0"
-contact_lists = []
+usercount = multiprocessing.Value('i')
+contact_names = multiprocessing.Array()
+listcount = multiprocessing.Value('i')
+contact_lists = multiprocessing.Array()
 
 #print a server dialog message
 def dialog(message):
@@ -37,15 +36,16 @@ def dialog(message):
 
 #print the current loaded contact configuration
 def print_config():
+    global contact_names, contact_lists, usercount, listcount
     print("Current Configuration:")
     print("Users (count =", usercount + "):")
-    for i in range(int(usercount)):
-        print("\t" + contact_names[i].name + "," + contact_names[i].ip + "," + contact_names[i].port)
+    for contact in contact_names:
+        print("\t" + contact.name + "," + contact.ip + "," + contact.port)
     print("Contact lists (count =", listcount + "):")
-    for l in range(int(listcount)):
-        print("\tNew List: " + contact_lists[l].name+ "," + contact_lists[l].count)
-        for k in range(int(contact_lists[l].count)):
-            print("\t\t" + contact_lists[l].members[k].name + "," + contact_lists[l].members[k].ip + "," + contact_lists[l].members[k].port)
+    for lst in contact_lists:
+        print("\tNew List: " + lst.name+ "," + lst.count)
+        for member in lst.members:
+            print("\t\t" + member.name + "," + member.ip + "," + member.port)
     print("\n")
 
 #load a passed config file into the contacts. Only meant for startup
@@ -59,7 +59,7 @@ def load(filename):
         for i in range(int(usercount)):
             person = Person(f.readline().strip().split(","))
             #If a user's IP is not a valid address, fail.
-            if(re.match(IPv4, person.ip) == None or re.match(Port, person.port) == None):
+            if(re.match(IPv4, person.ip) is None or not (1023 < int(person.port) and int(person.port) < 65354)):
                 dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
                 usercount = "0"
                 listcount = "0"
@@ -87,7 +87,8 @@ def load(filename):
         f.close()
         dialog("Successfully loaded configuration file \033[1m" + filename + "\033[0m.")
         return "SUCCESS"
-    except:
+    except Exception as ex:
+        print("\033[91m[ERROR]\033[0m " + ex)
         dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
         usercount = "0"
         listcount = "0"
@@ -95,26 +96,10 @@ def load(filename):
         contact_lists = []
         return "FAILURE"
         
-    #check if the user is already in the list, if they do, fail.
-    for k in range(int(lst.count)):
-        if(lst.members[k].name == name):
-            dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
-            return "FAILURE"
-    #find the user in the contact list, succeed if found (and added)
-    for i in range(int(usercount)):
-        if(contact_names[i].name == name):
-            lst.members.append(contact_names[i])
-            lst.count = str(int(lst.count) + 1)
-            return "SUCCESS"
-    dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
-    return "FAILURE"
-
-
-
 #add a user to the contact list. Failure if the user already exists
 def register(name, ip, port):
     dialog("Attempting to add user with details:\n\t\tname = \033[1m" + name + "\033[0m\n\t\tip   = \033[1m" + ip + "\033[0m\n\t\tport = \033[1m" + port + "\033[0m\n")
-    if(re.match(IPv4, ip) == None or re.match(Port, port) == None):
+    if(re.match(IPv4, ip) is None or not (1023 < int(port) and int(port) < 65354)):
         dialog("Failed to add user \033[1m" + name + "\033[0m.")
         return "FAILURE"
     global usercount, contact_names
@@ -135,8 +120,8 @@ def create(list_name):
     dialog("Attempting to create contact list with name = \033[1m" + list_name + "\033[0m.")
     global listcount, contact_lists
     #check if a contact list of the given name exists
-    for i in range(int(listcount)):
-        if(contact_lists[i].name == list_name):
+    for lst in contact_lists:
+        if(lst.name == list_name):
             dialog("Failed to create contact list.")
             return "FAILURE"
     lst = List([list_name, "0"])
@@ -159,6 +144,7 @@ def query_lists():
 #add the user with the passed name to the specified contact list
 def join(list_name, name):
     dialog("Attempting to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
+    global usercount, contact_names, listcount, contact_lists
     #if the user is in a chat, they cannot exit.
     for lst in contact_lists:
         if(lst.in_chat):
@@ -166,26 +152,23 @@ def join(list_name, name):
                 if(member.name == name):
                     dialog("Failed to remove user \033[1m" + name + "\033[0m.")
                     return "FAILURE"
-    global usercount, contact_names, listcount, contact_lists
-    lst = None
     #find the list, if it doesnt exist, fail.
     for l in range(int(listcount)):
+        #list found.
         if(contact_lists[l].name == list_name):
-            lst = contact_lists[l]
-            break
-    if(lst != None):
-        for contact in contact_names:
-            if(contact.name == name):
-                lst.members.append(contact)
-                lst.count = str(int(lst.count) + 1)
-                dialog("Successfully added user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
-                return "SUCCESS"
+            for contact in contact_names:
+                if(contact.name == name):
+                    contact_lists[l].members.append(contact)
+                    contact_lists[l].count = str(int(contact_lists[l].count) + 1)
+                    dialog("Successfully added user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
+                    return "SUCCESS"
     dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
     return "FAILURE"
 
 #remove the user with the given name from the specified list.
 def leave(list_name, name):
     dialog("Attempting to remove user \033[1m" + name + "\033[0m from contact list \033[1m" + list_name + "\033[0m.")
+    global contact_lists, contact_names
     #if the user is in a chat, they cannot exit.
     for lst in contact_lists:
         if(lst.in_chat):
@@ -193,12 +176,11 @@ def leave(list_name, name):
                 if(member.name == name):
                     dialog("Failed to remove user \033[1m" + name + "\033[0m.")
                     return "FAILURE"
-    global contact_lists
-    for lst in contact_lists:
-        if(lst.name == list_name):
-            for k in range(int(lst.members)):
-                if(lst.members[k].name == name):
-                    del contact_lists[k]
+    for l in range(int(listcount)):
+        if(contact_lists[l].name == list_name):
+            for k in range(int(contact_lists[l].count)):
+                if(contact_lists[l].members[k].name == name):
+                    del contact_lists[l].members[k]
                     dialog("Successfully removed user \033[1m" + name + "\033[0m from contact list \033[1m" + list_name + "\033[0m.")
                     return "SUCCESS"
     dialog("Failed to remove user \033[1m" + name + "\033[0m from contact list \033[1m" + list_name + "\033[0m.")
@@ -207,7 +189,7 @@ def leave(list_name, name):
 #remove a contact name from the active users list and any contact-list they are in
 #if the user is in an ongoing IM, they cannot leave until the chat is terminated.
 def exit(name):
-    global contact_names, contact_lists 
+    global contact_names, contact_lists, usercount, listcount 
     removed = False
     dialog("Attempting to remove user \033[1m" + name + "\033[0m...")
     #if the user is in a chat, they cannot exit.
@@ -218,18 +200,18 @@ def exit(name):
                     dialog("Failed to remove user \033[1m" + name + "\033[0m.")
                     return "FAILURE"
     #remove the user from the contacts list
-    for contact in contact_names:
-        if(contact.name == name):
-            del contact
+    for i in range(int(usercount)):
+        if(contact_names[i].name == name):
+            del contact_names[i]
             usercount = str(int(usercount)-1)
             removed = True
             break
     #remove the user from any contact lists they were in
-    for lst in contact_lists:
-        for member in lst.members:
-            if(member.name == name):
-                del member
-                lst.count = str(int(lst.count)-1)
+    for l in range(int(listcount)):
+        for k in range(int(contact_lists[l].count)):
+            if(contact_lists[l].name == name):
+                del contact_lists[l].members[k]
+                contact_lists[l].count = str(int(contact_lists[l].count)-1)
                 removed = True
                 break
     if(removed):
@@ -241,11 +223,11 @@ def exit(name):
 
 #Begin an IM chat session with users in a certain contact list
 def im_start(list_name, name):
-    dialog("Attempting to start an IM chat session for \033[1m" + list_name"\033[0m initiated by \033[1m" + name + "\033[0m.")
+    dialog("Attempting to start an IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
 
 #Termainate an IM chat session with users in a certain contact list
 def im_complete(list_name, name):
-    dialog("Attempting to start an IM chat session for \033[1m" + list_name"\033[0m initiated by \033[1m" + name + "\033[0m.")
+    dialog("Attempting to start an IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
 
 #save the current config file. return with appropriate response code
 def save(filename):
@@ -254,13 +236,13 @@ def save(filename):
         f = open(filename, "w")
         global usercount, contact_names, listcount, contact_lists
         f.write(usercount + "\n")
-        for i in range(int(usercount)):
-            f.write(contact_names[i].name + "," + contact_names[i].ip + "," + contact_names[i].port + "\n")
+        for contact in contact_names:
+            f.write(contact.name + "," + contact.ip + "," + contact.port + "\n")
         f.write(listcount + "\n")
-        for l in range(int(listcount)):
-            f.write(contact_lists[l].name + "," + contact_lists[l].count + "\n")
-            for k in range(int(contact_lists[l].count)):
-                f.write(contact_lists[l].members[k].name + "," + contact_lists[l].members[k].ip + "," + contact_lists[l].members[k].port + "\n")
+        for lst in contact_lists:
+            f.write(lst.name + "," + lst.count + "\n")
+            for member in lst.members:
+                f.write(member.name + "," + member.ip + "," + member.port + "\n")
         f.close()
         dialog("Configuration sucessfully saved to file \033[1m" + filename + "\033[0m.")
         return "SUCCESS"
@@ -274,7 +256,7 @@ def verify_input(cmd):
     cmd = cmd.split(" ")
     cmdc = len(cmd)
     if(cmd[0] == "register" and cmdc == 4):
-        if(re.match(IPv4, cmd[2]) != None and re.match(Port, cmd[3])):
+        if(re.match(IPv4, cmd[2]) is not None and re.match(Port, cmd[3])):
             register(cmd[1], cmd[2], cmd[3])
     elif(cmd[0] == "help" and cmdc == 1):
         print("\tregister <contact-name> <IP-address> <port>\n\tcreate <contact-list-name>\n\tquery-lists\n\tjoin <contact-list-name> <contact-name>\n\tleave <contact-list-name> <contact-name>\n\texit <contact-name>\n\tprint-config\n\tsave <file-name>\n\tquit")
@@ -295,11 +277,10 @@ def verify_input(cmd):
     elif(cmd[0] == "quit" and cmdc == 1):
         sure = None
         while(sure != "yes" and sure != "no"):
-            if(sure != None):
-                print("Please enter 'yes' or 'no'")
-            sure = input("Are you sure?\nAny unsaved entries will be lost.\n> ").lower()
+            sure = input("Are you sure?\nAny unsaved entries will be lost.\nPlease enter 'yes' or 'no'\n> ").lower()
         #cleanly exit the parallel processes
         if(sure == "yes"):
+            print("OK... Terminating server...")
             global p
             p.terminate()
             p.join()
@@ -327,6 +308,11 @@ def command(cmd):
     elif(cmd[0] == "save"):
         return save(cmd[1])
 
+def servercmd():
+    while(True):
+        cmd = input()
+        verify_input(cmd)
+
 #continuously check for input
 def listen(serverPort):
     serverSocket = socket(AF_INET, SOCK_DGRAM)
@@ -338,7 +324,7 @@ def listen(serverPort):
             dialog("Message received from: \033[1m" + clientAddr[0] + "\033[0m\n\t\t" + recv.decode())
             response = ""
             cmd = recv.decode().split(" ")
-            command(cmd)
+            response = command(cmd)
             serverSocket.sendto(response.encode(), clientAddr)
 
 #start the program here
@@ -347,7 +333,7 @@ def main():
     #store the specified port number, if none was given, alert the user and exit the program
     if(len(sys.argv) > 1):
         serverPort = int(sys.argv[1])
-        if(re.match(Port, str(serverPort)) == None):
+        if(not (1023 < serverPort and serverPort < 65354)):
             print("\033[91m[ERROR]\033[0m: Port number must be in the range 1024-65353. Additional restrictions to port range may apply to usage.")
             sys.exit()
     else:
@@ -365,9 +351,7 @@ def main():
     p.start()
 
     #listen for serverside commands
-    while(True):
-        cmd = input()
-        verify_input(cmd)
+    servercmd()
     
 if(__name__ == '__main__'):
     main()
