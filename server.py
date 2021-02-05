@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import sys
+import os
 from datetime import datetime
 from socket import *
 import re
@@ -12,7 +13,7 @@ IPv4 = "^(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1
 class List:
     def __init__(self, arr):
         self.name = arr[0]
-        self.count = arr[1]
+        self.count = int(arr[1])
         self.in_chat = False
         self.initiator = ""
         self.members = []
@@ -25,10 +26,10 @@ class Person:
 
 global p
 serverPort = -1
-usercount = multiprocessing.Value('i')
-contact_names = multiprocessing.Array()
-listcount = multiprocessing.Value('i')
-contact_lists = multiprocessing.Array()
+usercount = 0
+contact_names = []
+listcount = 0
+contact_lists = []
 
 #print a server dialog message
 def dialog(message):
@@ -38,12 +39,12 @@ def dialog(message):
 def print_config():
     global contact_names, contact_lists, usercount, listcount
     print("Current Configuration:")
-    print("Users (count =", usercount + "):")
+    print("Users (count =", str(usercount) + "):")
     for contact in contact_names:
         print("\t" + contact.name + "," + contact.ip + "," + contact.port)
-    print("Contact lists (count =", listcount + "):")
+    print("Contact lists (count =", str(listcount) + "):")
     for lst in contact_lists:
-        print("\tNew List: " + lst.name+ "," + lst.count)
+        print("\tNew List: " + lst.name+ "," + str(lst.count))
         for member in lst.members:
             print("\t\t" + member.name + "," + member.ip + "," + member.port)
     print("\n")
@@ -54,32 +55,32 @@ def load(filename):
         dialog("Loading configuration from file: \033[1m" + filename + "\033[0m...")
         f = open(filename, "r")
         global usercount, contact_names, listcount, contact_lists
-        usercount = f.readline().strip()
+        usercount = int(f.readline().strip())
         #add each user to the address book
-        for i in range(int(usercount)):
+        for i in range(usercount):
             person = Person(f.readline().strip().split(","))
             #If a user's IP is not a valid address, fail.
             if(re.match(IPv4, person.ip) is None or not (1023 < int(person.port) and int(person.port) < 65354)):
                 dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
-                usercount = "0"
-                listcount = "0"
+                usercount = 0
+                listcount = 0
                 contact_names = []
                 contact_lists = []
                 return "FAILURE"
             contact_names.append(person)
-        listcount = f.readline().strip()
+        listcount = int(f.readline().strip())
         #add each contact list
-        for l in range(int(listcount)):
+        for l in range(listcount):
             lst = List(f.readline().strip().split(","))
             contact_lists.append(lst)
             #add each user in the contact list to the respective list
-            for k in range(int(contact_lists[l].count)):
+            for k in range(contact_lists[l].count):
                 contact = Person(f.readline().strip().split(","))
                 #If a user's IP is not a valid address, fail.
                 if(re.match(IPv4, contact.ip) == None or re.match(Port, contact.port) == None):
                     dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
-                    usercount = "0"
-                    listcount = "0"
+                    usercount = 0
+                    listcount = 0
                     contact_names = []
                     contact_lists = []
                     return "FAILURE"
@@ -88,10 +89,10 @@ def load(filename):
         dialog("Successfully loaded configuration file \033[1m" + filename + "\033[0m.")
         return "SUCCESS"
     except Exception as ex:
-        print("\033[91m[ERROR]\033[0m " + ex)
+        print("\033[91m[ERROR]\033[0m " + str(ex))
         dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
-        usercount = "0"
-        listcount = "0"
+        usercount = 0
+        listcount = 0
         contact_names = []
         contact_lists = []
         return "FAILURE"
@@ -103,7 +104,7 @@ def register(name, ip, port):
         dialog("Failed to add user \033[1m" + name + "\033[0m.")
         return "FAILURE"
     global usercount, contact_names
-    for i in range(int(usercount)):
+    for i in range(usercount):
         #check if the username is taken or not.
         if(contact_names[i].name == name or (contact_names[i].ip == ip and contact_names[i].port == port)):
             dialog("Failed to add user \033[1m" + name + "\033[0m.")
@@ -111,7 +112,7 @@ def register(name, ip, port):
     #the user is not present, add them to the list.
     contact = Person([name, ip, port])
     contact_names.append(contact)
-    usercount = str(int(usercount) + 1)
+    usercount = usercount + 1
     print_config()
     return "SUCCESS"
 
@@ -126,7 +127,7 @@ def create(list_name):
             return "FAILURE"
     lst = List([list_name, "0"])
     contact_lists.append(lst)
-    listcount = str(int(listcount) + 1)
+    listcount = listcount + 1
     dialog("Contact list \033[1m" + list_name + "\033[0m successfully created.")
     return "SUCCESS"
 
@@ -136,7 +137,7 @@ def query_lists():
     global listcount, contact_lists
     ret = listcount + "\n"
     for lst in contact_lists:
-        ret += lst.name + ", " + lst.count + "\n"
+        ret += lst.name + ", " + str(lst.count) + "\n"
         for member in lst.members:
             ret += member.name + "\n"
     return ret
@@ -153,13 +154,13 @@ def join(list_name, name):
                     dialog("Failed to remove user \033[1m" + name + "\033[0m.")
                     return "FAILURE"
     #find the list, if it doesnt exist, fail.
-    for l in range(int(listcount)):
+    for l in range(listcount):
         #list found.
         if(contact_lists[l].name == list_name):
             for contact in contact_names:
                 if(contact.name == name):
                     contact_lists[l].members.append(contact)
-                    contact_lists[l].count = str(int(contact_lists[l].count) + 1)
+                    contact_lists[l].count = contact_lists[l].count + 1
                     dialog("Successfully added user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
                     return "SUCCESS"
     dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
@@ -176,9 +177,9 @@ def leave(list_name, name):
                 if(member.name == name):
                     dialog("Failed to remove user \033[1m" + name + "\033[0m.")
                     return "FAILURE"
-    for l in range(int(listcount)):
+    for l in range(listcount):
         if(contact_lists[l].name == list_name):
-            for k in range(int(contact_lists[l].count)):
+            for k in range(contact_lists[l].count):
                 if(contact_lists[l].members[k].name == name):
                     del contact_lists[l].members[k]
                     dialog("Successfully removed user \033[1m" + name + "\033[0m from contact list \033[1m" + list_name + "\033[0m.")
@@ -200,18 +201,18 @@ def exit(name):
                     dialog("Failed to remove user \033[1m" + name + "\033[0m.")
                     return "FAILURE"
     #remove the user from the contacts list
-    for i in range(int(usercount)):
+    for i in range(usercount):
         if(contact_names[i].name == name):
             del contact_names[i]
             usercount = str(int(usercount)-1)
             removed = True
             break
     #remove the user from any contact lists they were in
-    for l in range(int(listcount)):
-        for k in range(int(contact_lists[l].count)):
+    for l in range(listcount):
+        for k in range(contact_lists[l].count):
             if(contact_lists[l].name == name):
                 del contact_lists[l].members[k]
-                contact_lists[l].count = str(int(contact_lists[l].count)-1)
+                contact_lists[l].count = contact_lists[l].count-1
                 removed = True
                 break
     if(removed):
@@ -235,12 +236,12 @@ def save(filename):
     try:
         f = open(filename, "w")
         global usercount, contact_names, listcount, contact_lists
-        f.write(usercount + "\n")
+        f.write(str(usercount) + "\n")
         for contact in contact_names:
             f.write(contact.name + "," + contact.ip + "," + contact.port + "\n")
-        f.write(listcount + "\n")
+        f.write(str(listcount) + "\n")
         for lst in contact_lists:
-            f.write(lst.name + "," + lst.count + "\n")
+            f.write(lst.name + "," + str(lst.count) + "\n")
             for member in lst.members:
                 f.write(member.name + "," + member.ip + "," + member.port + "\n")
         f.close()
@@ -256,7 +257,7 @@ def verify_input(cmd):
     cmd = cmd.split(" ")
     cmdc = len(cmd)
     if(cmd[0] == "register" and cmdc == 4):
-        if(re.match(IPv4, cmd[2]) is not None and re.match(Port, cmd[3])):
+        if(re.match(IPv4, cmd[2]) is not None and (1023 < cmd[3] and cmd[3] < 65354)):
             register(cmd[1], cmd[2], cmd[3])
     elif(cmd[0] == "help" and cmdc == 1):
         print("\tregister <contact-name> <IP-address> <port>\n\tcreate <contact-list-name>\n\tquery-lists\n\tjoin <contact-list-name> <contact-name>\n\tleave <contact-list-name> <contact-name>\n\texit <contact-name>\n\tprint-config\n\tsave <file-name>\n\tquit")
@@ -308,10 +309,14 @@ def command(cmd):
     elif(cmd[0] == "save"):
         return save(cmd[1])
 
-def servercmd():
+def servercmd(fileno):
+    sys.stdin = os.fdopen(fileno)
     while(True):
-        cmd = input()
-        verify_input(cmd)
+        try:
+            cmd = input()
+            verify_input(cmd)
+        except Exception as ex:
+            print("\033[91m[ERROR]\033[0m " + str(ex))
 
 #continuously check for input
 def listen(serverPort):
@@ -319,7 +324,12 @@ def listen(serverPort):
     serverSocket.bind(('', serverPort))
     dialog("\033[92mServer ready to receive...\033[0m")
     while(True):
+        #listen for serverside commands while waiting for socket data
+        p = Process(target=servercmd, args=(sys.stdin.fileno(),))
+        p.start()
         recv, clientAddr = serverSocket.recvfrom(2048)
+        p.terminate()
+        p.join()
         if recv:
             dialog("Message received from: \033[1m" + clientAddr[0] + "\033[0m\n\t\t" + recv.decode())
             response = ""
@@ -347,11 +357,7 @@ def main():
         load(sys.argv[2])
     
     #listen for clients
-    p = Process(target=listen, args=(serverPort,))
-    p.start()
-
-    #listen for serverside commands
-    servercmd()
+    listen(serverPort)
     
 if(__name__ == '__main__'):
     main()
