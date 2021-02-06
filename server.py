@@ -204,7 +204,7 @@ def exit(name):
     for i in range(usercount):
         if(contact_names[i].name == name):
             del contact_names[i]
-            usercount = str(int(usercount)-1)
+            usercount = usercount-1
             removed = True
             break
     #remove the user from any contact lists they were in

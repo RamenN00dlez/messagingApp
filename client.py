@@ -20,7 +20,7 @@ def verify_input(cmd):
         if(re.match(IPv4, cmd[2]) != None and 1023 < int(cmd[3]) and int(cmd[3]) < 65354):
             return True
     elif(cmd[0] == "help" and cmdc == 1):
-        print("\tregister <contact-name> <IP-address> <port>\n\tcreate <contact-list-name>\n\tquery-lists\n\tjoin <contact-list-name> <contact-name>\n\tleave <contact-list-name> <contact-name>\n\texit <contact-name>\n\tim-start <contact-list-name> <contact-name>\n\tim-complete <contact-list-name> <contact-name>\n\tsave <file-name>\n\tquit")
+        print("\tregister <contact-name> <IP-address> <port>\n\tcreate <contact-list-name>\n\tquery-lists\n\tjoin <contact-list-name> <contact-name>\n\tleave <contact-list-name> <contact-name>\n\texit <contact-name>\n\tim-start <contact-list-name> <contact-name>\n\tim-complete <contact-list-name> <contact-name>\n\tsave <file-name>")
     elif(cmd[0] == "create" and cmdc == 2):
         return True
     elif(cmd[0] == "query-lists" and cmdc == 1):
@@ -37,8 +37,6 @@ def verify_input(cmd):
         return True
     elif(cmd[0] == "save" and cmdc == 2):
         return True
-    elif(cmd[0] == "quit" and cmdc == 1):
-        sys.exit()
     else:
         print("Invalid Command.\n\tSee <help> for a list of commands.")
     return False
@@ -61,6 +59,8 @@ def main():
             clientSocket.sendto(msg.encode(), (serverip, serverport))
             response, addr = clientSocket.recvfrom(2048)
             print(response.decode())
+            if(msg.split(" ")[0] == "exit"):
+                sys.exit()
 
 
 if(__name__ == '__main__'):
