@@ -129,6 +129,7 @@ def create(list_name):
     contact_lists.append(lst)
     listcount = listcount + 1
     dialog("Contact list \033[1m" + list_name + "\033[0m successfully created.")
+    print_config()
     return "SUCCESS"
 
 #return the contact lists and their members.
@@ -160,6 +161,7 @@ def join(list_name, name):
                     contact_lists[l].members.append(contact)
                     contact_lists[l].count = contact_lists[l].count + 1
                     dialog("Successfully added user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
+                    print_config()
                     return "SUCCESS"
     dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
     return "FAILURE"
@@ -180,7 +182,9 @@ def leave(list_name, name):
             for k in range(contact_lists[l].count):
                 if(contact_lists[l].members[k].name == name):
                     del contact_lists[l].members[k]
+                    contact_lists[l].count = contact_lists[l].count - 1
                     dialog("Successfully removed user \033[1m" + name + "\033[0m from contact list \033[1m" + list_name + "\033[0m.")
+                    print_config()
                     return "SUCCESS"
     dialog("Failed to remove user \033[1m" + name + "\033[0m from contact list \033[1m" + list_name + "\033[0m.")
     return "FAILURE"
@@ -214,6 +218,7 @@ def exit(name):
                 removed = True
                 break
     if(removed):
+        print_config()
         dialog("User \033[1m" + name + "\033[0m was successfully removed.")
         return "SUCCESS"
     else:
@@ -263,6 +268,8 @@ def verify_input(cmd):
             p.terminate()
             p.join()
             sys.exit()
+        else:
+            print("OK...")
 
 #process a command
 def command(cmd):
