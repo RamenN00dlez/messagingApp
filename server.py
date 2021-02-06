@@ -137,9 +137,7 @@ def query_lists():
     global listcount, contact_lists
     ret = str(listcount) + "\n"
     for lst in contact_lists:
-        ret += lst.name + ", " + str(lst.count) + "\n"
-        for member in lst.members:
-            ret += member.name + "\n"
+        ret += lst.name + "\n"
     return ret
 
 #add the user with the passed name to the specified contact list
@@ -253,6 +251,7 @@ def save(filename):
 
 #validate a command, execute it if valid.
 def verify_input(cmd):
+    global p
     dialog("Executing serverside command...")
     cmd = cmd.split(" ")
     cmdc = len(cmd)
@@ -282,7 +281,6 @@ def verify_input(cmd):
         #cleanly exit the parallel processes
         if(sure == "yes"):
             print("OK... Terminating server...")
-            global p
             p.terminate()
             p.join()
             sys.exit()
@@ -320,6 +318,7 @@ def servercmd(fileno):
 
 #continuously check for input
 def listen(serverPort):
+    global p
     serverSocket = socket(AF_INET, SOCK_DGRAM)
     serverSocket.bind(('', serverPort))
     dialog("\033[92mServer ready to receive...\033[0m")
