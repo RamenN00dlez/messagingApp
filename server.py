@@ -251,30 +251,9 @@ def save(filename):
 
 #validate a command, execute it if valid.
 def verify_input(cmd):
-    global p
-    dialog("Executing serverside command...")
     cmd = cmd.split(" ")
     cmdc = len(cmd)
-    if(cmd[0] == "register" and cmdc == 4):
-        if(re.match(IPv4, cmd[2]) is not None and (1023 < cmd[3] and cmd[3] < 65354)):
-            register(cmd[1], cmd[2], cmd[3])
-    elif(cmd[0] == "help" and cmdc == 1):
-        print("\tregister <contact-name> <IP-address> <port>\n\tcreate <contact-list-name>\n\tquery-lists\n\tjoin <contact-list-name> <contact-name>\n\tleave <contact-list-name> <contact-name>\n\texit <contact-name>\n\tprint-config\n\tsave <file-name>\n\tquit")
-    elif(cmd[0] == "create" and cmdc == 2):
-        create(cmd[1])
-    elif(cmd[0] == "query-lists" and cmdc == 1):
-        print(query_lists())
-    elif(cmd[0] == "join" and cmdc == 3):
-        join(cmd[1], cmd[2])
-    elif(cmd[0] == "leave" and cmdc == 3):
-        leave(cmd[1], cmd[2])
-    elif(cmd[0] == "exit" and cmdc == 2):
-        exit(cmd[1])
-    elif(cmd[0] == "save" and cmdc == 2):
-        save(cmd[1])
-    elif(cmd[0] == "print-config" and cmdc == 1):
-        print_config()
-    elif(cmd[0] == "quit" and cmdc == 1):
+    if(cmd[0] == "quit" and cmdc == 1):
         sure = None
         while(sure != "yes" and sure != "no"):
             sure = input("Are you sure?\nAny unsaved entries will be lost.\nPlease enter 'yes' or 'no'\n> ").lower()
@@ -284,7 +263,6 @@ def verify_input(cmd):
             p.terminate()
             p.join()
             sys.exit()
-    return "Invalid command. Type 'help' for help."
 
 #process a command
 def command(cmd):
@@ -307,28 +285,14 @@ def command(cmd):
     elif(cmd[0] == "save"):
         return save(cmd[1])
 
-def servercmd(fileno):
-    sys.stdin = os.fdopen(fileno)
-    while(True):
-        try:
-            cmd = input()
-            verify_input(cmd)
-        except Exception as ex:
-            print("\033[91m[ERROR]\033[0m " + str(ex))
-
 #continuously check for input
 def listen(serverPort):
-    global p
     serverSocket = socket(AF_INET, SOCK_DGRAM)
     serverSocket.bind(('', serverPort))
     dialog("\033[92mServer ready to receive...\033[0m")
     while(True):
         #listen for serverside commands while waiting for socket data
-        p = Process(target=servercmd, args=(sys.stdin.fileno(),))
-        p.start()
         recv, clientAddr = serverSocket.recvfrom(2048)
-        p.terminate()
-        p.join()
         if recv:
             dialog("Message received from: \033[1m" + clientAddr[0] + "\033[0m\n\t\t" + recv.decode())
             response = ""
@@ -356,7 +320,12 @@ def main():
         load(sys.argv[2])
     
     #listen for clients
-    listen(serverPort)
-    
+    p = Process(target=listen, args=(serverPort,))
+    p.start()
+
+    while(True):
+        cmd = input()
+        verify_input(cmd)
+
 if(__name__ == '__main__'):
     main()
