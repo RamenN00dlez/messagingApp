@@ -87,6 +87,7 @@ def load(filename):
                 contact_lists[l].members.append(contact)
         f.close()
         dialog("Successfully loaded configuration file \033[1m" + filename + "\033[0m.")
+        print_config()
         return "SUCCESS"
     except Exception as ex:
         print("\033[91m[ERROR]\033[0m " + str(ex))
