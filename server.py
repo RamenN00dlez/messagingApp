@@ -77,7 +77,7 @@ def load(filename):
             for k in range(contact_lists[l].count):
                 contact = Person(f.readline().strip().split(","))
                 #If a user's IP is not a valid address, fail.
-                if(re.match(IPv4, contact.ip) == None or not (1023 < int(contact.port) and int(contact.port) < 65535):
+                if(re.match(IPv4, contact.ip) == None or not (1023 < int(contact.port) and int(contact.port) < 65535)):
                     dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
                     usercount = 0
                     listcount = 0
