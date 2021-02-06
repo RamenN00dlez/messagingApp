@@ -60,7 +60,7 @@ def load(filename):
         for i in range(usercount):
             person = Person(f.readline().strip().split(","))
             #If a user's IP is not a valid address, fail.
-            if(re.match(IPv4, person.ip) is None or not (1023 < int(person.port) and int(person.port) < 65354)):
+            if(re.match(IPv4, person.ip) is None or not (1023 < int(person.port) and int(person.port) < 65535)):
                 dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
                 usercount = 0
                 listcount = 0
@@ -77,7 +77,7 @@ def load(filename):
             for k in range(contact_lists[l].count):
                 contact = Person(f.readline().strip().split(","))
                 #If a user's IP is not a valid address, fail.
-                if(re.match(IPv4, contact.ip) == None or re.match(Port, contact.port) == None):
+                if(re.match(IPv4, contact.ip) == None or not (1023 < int(contact.port) and int(contact.port) < 65535):
                     dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
                     usercount = 0
                     listcount = 0
@@ -314,7 +314,7 @@ def main():
     #store the specified port number, if none was given, alert the user and exit the program
     if(len(sys.argv) > 1):
         serverPort = int(sys.argv[1])
-        if(not (1023 < serverPort and serverPort < 65354)):
+        if(not (1023 < serverPort and serverPort < 65535)):
             print("\033[91m[ERROR]\033[0m: Port number must be in the range 1024-65353. Additional restrictions to port range may apply to usage.")
             sys.exit()
     else:

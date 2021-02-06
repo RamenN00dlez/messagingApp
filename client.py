@@ -17,7 +17,7 @@ def verify_input(cmd):
     cmd = cmd.split(" ")
     cmdc = len(cmd)
     if(cmd[0] == "register" and cmdc == 4):
-        if(re.match(IPv4, cmd[2]) != None and 1023 < int(cmd[3]) and int(cmd[3]) < 65354):
+        if(re.match(IPv4, cmd[2]) != None and 1023 < int(cmd[3]) and int(cmd[3]) < 65535):
             return True
     elif(cmd[0] == "help" and cmdc == 1):
         print("\tregister <contact-name> <IP-address> <port>\n\tcreate <contact-list-name>\n\tquery-lists\n\tjoin <contact-list-name> <contact-name>\n\tleave <contact-list-name> <contact-name>\n\texit <contact-name>\n\tim-start <contact-list-name> <contact-name>\n\tim-complete <contact-list-name> <contact-name>\n\tsave <file-name>")
@@ -49,7 +49,7 @@ def main():
     response = ""
     serverip = sys.argv[1]
     serverport = int(sys.argv[2])
-    if(re.match(IPv4, serverip) is None or not (1023 < serverport and serverport < 65354)):
+    if(re.match(IPv4, serverip) is None or not (1023 < serverport and serverport < 65535)):
             print("Invalid server IP and/or port number.")
             sys.exit()
     clientSocket = socket(AF_INET, SOCK_DGRAM)
