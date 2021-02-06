@@ -135,7 +135,7 @@ def create(list_name):
 def query_lists():
     dialog("Querying contact list.")
     global listcount, contact_lists
-    ret = listcount + "\n"
+    ret = str(listcount) + "\n"
     for lst in contact_lists:
         ret += lst.name + ", " + str(lst.count) + "\n"
         for member in lst.members:
@@ -210,7 +210,7 @@ def exit(name):
     #remove the user from any contact lists they were in
     for l in range(listcount):
         for k in range(contact_lists[l].count):
-            if(contact_lists[l].name == name):
+            if(contact_lists[l].members[k].name == name):
                 del contact_lists[l].members[k]
                 contact_lists[l].count = contact_lists[l].count-1
                 removed = True
