@@ -25,6 +25,7 @@ class Person:
         self.port = data[2]
 
 global p
+serverIP = ""
 serverPort = -1
 usercount = 0
 contact_names = []
@@ -104,6 +105,11 @@ def register(name, ip, port):
     if(re.match(IPv4, ip) is None or not (1023 < int(port) and int(port) < 65354)):
         dialog("Failed to add user \033[1m" + name + "\033[0m.")
         return "FAILURE"
+    #check the ip/port combo with the server's
+    if(ip == serverIP and port == serverPort):
+        dialog("Failed to add user \033[1m" + name + "\033[0m.")
+        return "FAILURE"
+    #check the user info with existing user info for conflicts
     global usercount, contact_names
     for i in range(usercount):
         #check if the username is taken or not.
@@ -228,11 +234,57 @@ def exit(name):
 
 #Begin an IM chat session with users in a certain contact list
 def im_start(list_name, name):
+    global listcount, contact_lists, contact_names, usercount
     dialog("Attempting to start an IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
+    pas = False
+
+    #make sure the user exists
+    for i in range(usercount):
+        if(contact_names[i].name  == name):
+            pas = True
+            break
+    #if the user did not exist, fail.
+    if(not pas):
+        dialog("Failed to start an IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
+        return "FAILURE"
+
+    #make sure the list exists (and if so, that the user is in the list)
+    for l in range(listcount):
+        if(contact_lists[l].name == list_name):
+            for k in range(contact_lists[l].count):
+                #found list with passed user - set it to chat mode, give initiator list of users
+                if(contact_lists[l].members[k].name == name):
+                    contact_lists[l].in_chat = True
+                    contact_lists[l].initiator = name
+                    code = "0\n"
+                    for user in contact_lists[l].members:
+                        if(user.name != name):
+                            code += user.ip + "," + user.port + "\n"
+                    code += contact_lists[l].members[k].ip + "," + contact_lists[l].members[k].port + "\n---\n"
+                    dialog("Successfully started IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
+                    return code
+    #if the list did not exist, fail
+    dialog("Failed to start an IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
+    return "FAILURE"
+    
 
 #Termainate an IM chat session with users in a certain contact list
 def im_complete(list_name, name):
-    dialog("Attempting to start an IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
+    global listcount, contact_lists
+    dialog("Attempting to complete an IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
+    #find the specified list
+    for l in range(listcount):
+        if(list_name == contact_lists[l].name):
+            #check if the list is in a chat and the initiator is the same as specified
+            if(contact_lists[l].in_chat and contact_lists[l].initiator == name):
+                #credentials matched - remove the list from chat mode
+                contact_lists[l].in_chat = False
+                contact_lists[l].initiator = ""
+                dialog("Successfully completed an IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
+                return "SUCCESS"
+    dialog("Failed to complete an IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
+    return "FAILURE"
+
 
 #save the current config file. return with appropriate response code
 def save(filename):
@@ -294,9 +346,12 @@ def command(cmd):
         return save(cmd[1])
 
 #continuously check for input
-def listen(serverPort):
+def listen():
+    global serverIP, serverPort
     serverSocket = socket(AF_INET, SOCK_DGRAM)
+    serverIP = gethostbyname(gethostname())
     serverSocket.bind(('', serverPort))
+    print(serverIP)
     dialog("\033[92mServer ready to receive...\033[0m")
     while(True):
         #listen for serverside commands while waiting for socket data
@@ -310,7 +365,7 @@ def listen(serverPort):
 
 #start the program here
 def main():
-    global p
+    global p, serverPort
     #store the specified port number, if none was given, alert the user and exit the program
     if(len(sys.argv) > 1):
         serverPort = int(sys.argv[1])
@@ -328,7 +383,7 @@ def main():
         load(sys.argv[2])
     
     #listen for clients
-    p = Process(target=listen, args=(serverPort,))
+    p = Process(target=listen)
     p.start()
 
     while(True):
