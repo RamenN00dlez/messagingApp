@@ -256,7 +256,7 @@ def im_start(list_name, name):
                 if(contact_lists[l].members[k].name == name):
                     contact_lists[l].in_chat = True
                     contact_lists[l].initiator = name
-                    code = "0\n"
+                    code = "0," + contact_lists[l].name + "\n"
                     for user in contact_lists[l].members:
                         if(user.name != name):
                             code += user.ip + "," + user.port + "\n"
