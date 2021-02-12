@@ -10,14 +10,14 @@ import ctypes
 
 #regular expression to match an IPv4 address
 IPv4 = "^(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
-msgre = "([0-9]+,[A-Za-z0-9_]+\n(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9]),(6553[0-4]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9]|[1-5][0-9][0-9][0-9][0-9]|[2-9][0-9][0-9][0-9]|1[1-9][0-9][0-9]|10[3-9][0-9]|102[4-9])\n---\n([A-Za-z0-9_]+> .*)?)"
+msgre = "^([0-9]+,[A-Za-z0-9_]+\n((2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9]),(6553[0-4]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9]|[1-5][0-9][0-9][0-9][0-9]|[2-9][0-9][0-9][0-9]|1[1-9][0-9][0-9]|10[3-9][0-9]|102[4-9])\n)+---(\n\033\[34m[A-Za-z0-9_]+\033\[0m> .*)?)"
 
 serverip = ""
 serverport = -1
 manager = Manager()
 d = manager.dict()
 myport = Value('i', -1)
-registered = False
+reg = Value('i', 0)
 clientSocket = None
 v = Value('i', -1)
 done = Value('i', 1)
@@ -25,40 +25,46 @@ rip = Value('i', 0)
 
 def recv(fileno):
     sys.stdin = os.fdopen(fileno)
-    global clientSocket, username, v, done, rip, d, myport
+    global clientSocket, username, v, done, rip, d, myport, reg
     while(True):
         mesg, clientAddr = clientSocket.recvfrom(2048)
         done.value = 0
         mesg = mesg.decode()
+        #print(mesg)
         if(re.match(msgre, mesg) != None):
+            #print("Its a messaage!\n", mesg)
             (header, msg) = mesg.split("---")
             lstname = mesg.split("\n")[0].split(',')[1]
             ip = d[1]
-            
+
             head = header.split("\n")
+            #print('\n'.join(head))
             (hednum, lst) = head[0].split(",")
             hednum = int(hednum)
-            dest = head[hednum + 1]
-            (dstip, dstport) = dest.split(',')
-
+            #print(str(hednum))
+            #print(head[hednum])
+            (dstip, dstport) = head[hednum].split(",")
+            (lastip, lastport) = head[-2].split(",")
+            #print(f"{d[1]} : {dstip}\n{myport.value} : {dstport}")    
             if(v.value == 1):
                 v.value = -1
                 message = input(f"\033[0mPlease enter a message to send to the contact list: \033[1m{lstname}\033[0m\n> \033[36m")
                 header = mesg
                 send(header, "\033[34m" + d[2] + ">\033[0m " + message)
-
-            if(d[1] != dstip and myport.value != int(dstport)):
-                print("\033[0mNew incoming message to list \033[1m" + lstname + "\033[0m\n" + msg + "\033[0m")
-                send(header, msg)
-                print("Pls enter command.\n> \033[36m", end='')
-            else:
+            elif(lastip != dstip or lastport != dstport):
+                print("\033[0m" + '-'*25 + "\nNew incoming message to list \033[1m" + lstname + "\033[0m" + msg + "\033[0m\n" + '-'*25)
+                send(header + "---", msg)
+                print("\033[0mPlease enter command.\n> \033[36m", end='')
+            elif(lastip == dstip and lastport == dstport):
                 fin = "im-complete " + header.split("\n")[0].split(",")[1] + " " + d[2]
                 clientSocket.sendto(fin.encode(), (serverip, serverport,))
+                m, ca = clientSocket.recvfrom(2048)
+                print("\033[35m" + m.decode() + "\033[0m")
         else:
-            print("\033[0mServer output:\n" + mesg)
+            print("\033[35m" + mesg + "\033[0m")
             if(v.value == 2 and mesg == "FAILURE"):
                 d[2] = ""
-                registered = False
+                reg.value = 0
             elif(v.value == 3 and mesg == "SUCCESS"):
                 rip.value = 1
         done.value = 1
@@ -78,14 +84,14 @@ def send(header, msg):
 
 #Verify whether or not a command is valid. True if yes, False if no
 def verify_input(cmd):
-    global d, myport, registered, clientSocket, rip
+    global d, myport, reg, clientSocket, rip, done
     cmd = cmd.split(" ")
     cmdc = len(cmd)
     if(cmd[0] == "register" and cmdc == 4):
-        if(re.match(IPv4, cmd[2]) != None and 1023 < int(cmd[3]) and int(cmd[3]) < 65535 and not registered and re.match("^[A-Za-z0-9_]+$", cmd[1]) != None):
-            registered = True
+        if(re.match(IPv4, cmd[2]) != None and 1023 < int(cmd[3]) and int(cmd[3]) < 65535 and reg.value == 0 and re.match("^[A-Za-z0-9_]+$", cmd[1]) != None):
+            reg.value = 1
             d[2] = cmd[1]
-            if(myport != -1):
+            if(myport.value == -1):
                 d[1] = cmd[2]
                 myport.value = int(cmd[3])
                 clientSocket.bind(('', myport.value))
@@ -95,6 +101,7 @@ def verify_input(cmd):
             return False
     elif(cmd[0] == "help" and cmdc == 1):
         print("\033[0m\tregister <contact-name> <IP-address> <port>\n\tcreate <contact-list-name>\n\tquery-lists\n\tjoin <contact-list-name> <contact-name>\n\tleave <contact-list-name> <contact-name>\n\texit <contact-name>\n\tim-start <contact-list-name> <contact-name>\n\tim-complete <contact-list-name> <contact-name>\n\tsave <file-name>\n\tquit (only valid if not registered.)")
+        done.value = 1
     elif(cmd[0] == "create" and cmdc == 2 and re.match("^[A-Za-z0-9_]+$", cmd[1]) != None):
         return True
     elif(cmd[0] == "query-lists" and cmdc == 1):
@@ -111,10 +118,11 @@ def verify_input(cmd):
         return True
     elif(cmd[0] == "save" and cmdc == 2):
         return True
-    elif(cmd[0] == "quit" and cmdc == 1 and d[2] == ""):
+    elif(cmd[0] == "quit" and cmdc == 1 and reg.value == 0):
         rip.value = 1
     else:
         print("\033[0mInvalid Command.\n\tSee <help> for a list of commands.")
+        done.value = 1
     return False
 
 def servcmd(fileno):
