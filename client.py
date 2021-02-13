@@ -2,6 +2,7 @@
 
 import sys
 import re
+import psutil
 from socket import *
 from multiprocessing import Process, Value, Manager
 from time import sleep
@@ -32,27 +33,22 @@ def recv(fileno):
         mesg = mesg.decode()
         #print(mesg)
         if(re.match(msgre, mesg) != None):
-            #print("Its a messaage!\n", mesg)
             (header, msg) = mesg.split("---")
             lstname = mesg.split("\n")[0].split(',')[1]
             ip = d[1]
 
             head = header.split("\n")
-            #print('\n'.join(head))
             (hednum, lst) = head[0].split(",")
             hednum = int(hednum)
-            #print(str(hednum))
-            #print(head[hednum])
             (dstip, dstport) = head[hednum].split(",")
             (lastip, lastport) = head[-2].split(",")
-            #print(f"{d[1]} : {dstip}\n{myport.value} : {dstport}")    
             if(v.value == 1):
                 v.value = -1
                 message = input(f"\033[0mPlease enter a message to send to the contact list: \033[1m{lstname}\033[0m\n> \033[36m")
                 header = mesg
                 send(header, "\033[34m" + d[2] + ">\033[0m " + message)
             elif(lastip != dstip or lastport != dstport):
-                print("\033[0m" + '-'*25 + "\nNew incoming message to list \033[1m" + lstname + "\033[0m" + msg + "\033[0m\n" + '-'*25)
+                print("\033[0m\n" + '-'*25 + "\nNew incoming message to list \033[1m" + lstname + "\033[0m" + msg + "\033[0m\n" + '-'*25)
                 send(header + "---", msg)
                 print("\033[0mPlease enter command.\n> \033[36m", end='')
             elif(lastip == dstip and lastport == dstport):
@@ -60,14 +56,16 @@ def recv(fileno):
                 clientSocket.sendto(fin.encode(), (serverip, serverport,))
                 m, ca = clientSocket.recvfrom(2048)
                 print("\033[35m" + m.decode() + "\033[0m")
+                done.value = 1
         else:
             print("\033[35m" + mesg + "\033[0m")
             if(v.value == 2 and mesg == "FAILURE"):
                 d[2] = ""
                 reg.value = 0
+                #myport.value = -1
             elif(v.value == 3 and mesg == "SUCCESS"):
                 rip.value = 1
-        done.value = 1
+            done.value = 1
 
 def send(header, msg):
     global clientSocket
@@ -88,38 +86,89 @@ def verify_input(cmd):
     cmd = cmd.split(" ")
     cmdc = len(cmd)
     if(cmd[0] == "register" and cmdc == 4):
-        if(re.match(IPv4, cmd[2]) != None and 1023 < int(cmd[3]) and int(cmd[3]) < 65535 and reg.value == 0 and re.match("^[A-Za-z0-9_]+$", cmd[1]) != None):
-            reg.value = 1
-            d[2] = cmd[1]
-            if(myport.value == -1):
-                d[1] = cmd[2]
-                myport.value = int(cmd[3])
-                clientSocket.bind(('', myport.value))
-            return True
+        if(reg.value == 0):
+            if(re.match(IPv4, cmd[2]) != None and 1023 < int(cmd[3]) and int(cmd[3]) < 65535):
+                if(re.match("^[A-Za-z0-9_]+$", cmd[1]) != None):
+                    test = 0
+                    try:
+                        clientSocket.bind(('', int(cmd[3])))
+                    except Exception:
+                        test = 1
+                    if(test == 0):
+                        if(myport.value == -1):
+                            reg.value = 1
+                            d[2] = cmd[1]
+                            d[1] = cmd[2]
+                            myport.value = int(cmd[3])
+                            return True
+                    else:
+                        print("\033[0mThat port is already taken.")
+                        done.value = 1
+                        return False
+                else:
+                    print("\033[0mInvalid username.")
+                    done.value = 1
+                    return False
         else:
-            print("You are already registered!")
+            print("\033[0mYou are already registered!")
+            done.value = 1
             return False
     elif(cmd[0] == "help" and cmdc == 1):
         print("\033[0m\tregister <contact-name> <IP-address> <port>\n\tcreate <contact-list-name>\n\tquery-lists\n\tjoin <contact-list-name> <contact-name>\n\tleave <contact-list-name> <contact-name>\n\texit <contact-name>\n\tim-start <contact-list-name> <contact-name>\n\tim-complete <contact-list-name> <contact-name>\n\tsave <file-name>\n\tquit (only valid if not registered.)")
         done.value = 1
-    elif(cmd[0] == "create" and cmdc == 2 and re.match("^[A-Za-z0-9_]+$", cmd[1]) != None):
-        return True
-    elif(cmd[0] == "query-lists" and cmdc == 1):
-        return True
-    elif(cmd[0] == "join" and cmdc == 3 and cmd[2] == d[2]):
-        return True
-    elif(cmd[0] == "leave" and cmdc == 3 and cmd[2] == d[2]):
-        return True
-    elif(cmd[0] == "exit" and cmdc == 2 and cmd[1] == d[2]):
-        return True
-    elif(cmd[0] == "im-start" and cmdc == 3 and cmd[2] == d[2]):
-        return True
-    elif(cmd[0] == "im-complete" and cmdc == 3 and cmd[2] == d[2]):
-        return True
-    elif(cmd[0] == "save" and cmdc == 2):
-        return True
+        return False
     elif(cmd[0] == "quit" and cmdc == 1 and reg.value == 0):
         rip.value = 1
+    elif(reg.value == 0):
+        print("\033[0mYou are not registered yet. You must register first.")
+        done.value = 1
+        return False
+    elif(cmd[0] == "create" and cmdc == 2):
+        if(re.match("^[A-Za-z0-9_]+$", cmd[1]) != None):
+            return True
+        else:
+            print("\033[0mInvalid contact list name.")
+            done.value = 1
+            return False
+    elif(cmd[0] == "query-lists" and cmdc == 1):
+        return True
+    elif(cmd[0] == "join" and cmdc == 3):
+        if(d[2] == cmd[2]):
+            return True
+        else:
+            print("\033[0mThat's not your username!")
+            done.value = 1
+            return False
+    elif(cmd[0] == "leave" and cmdc == 3):
+        if(cmd[2] == d[2]):
+            return True
+        else:
+            print("\033[0mThat's not your username!")
+            done.value = 1
+            return False
+    elif(cmd[0] == "exit" and cmdc == 2):
+        if(cmd[1] == d[2]):
+            return True
+        else:
+            print("\033[0mThat's not your username!")
+            done.value = 1
+            return False
+    elif(cmd[0] == "im-start" and cmdc == 3):
+        if(cmd[2] == d[2]):
+            return True
+        else:
+            print("\033[0mThat's not your username!")
+            done.value = 1
+            return False
+    elif(cmd[0] == "im-complete" and cmdc == 3):
+        if(cmd[2] == d[2]):
+            return True
+        else:
+            print("\033[0mThat's not your username!")
+            done.value = 1
+            return False
+    elif(cmd[0] == "save" and cmdc == 2):
+        return True
     else:
         print("\033[0mInvalid Command.\n\tSee <help> for a list of commands.")
         done.value = 1
@@ -146,6 +195,7 @@ def servcmd(fileno):
     
 def main():
     global clientSocket, serverip, serverport, p, pr, v, done, rip
+    print(AF_INET.__dict__)
     if(len(sys.argv) != 3):
         print("\033[91m[ERROR]\033[0m Must define server ip and port number!\n\t\tFormat: ./client.py <server ip> <server port>")
         sys.exit()

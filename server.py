@@ -27,6 +27,7 @@ class Person:
 global p
 serverIP = ""
 serverPort = -1
+serverSocket = None
 usercount = 0
 contact_names = []
 listcount = 0
@@ -347,11 +348,9 @@ def command(cmd):
 
 #continuously check for input
 def listen():
-    global serverIP, serverPort
+    global serverIP, serverPort, serverSocket
     serverSocket = socket(AF_INET, SOCK_DGRAM)
-    serverIP = gethostbyname(gethostname())
     serverSocket.bind(('', serverPort))
-    print(serverIP)
     dialog("\033[92mServer ready to receive...\033[0m")
     while(True):
         #listen for serverside commands while waiting for socket data
@@ -365,7 +364,7 @@ def listen():
 
 #start the program here
 def main():
-    global p, serverPort
+    global p, serverPort, serverSocket
     #store the specified port number, if none was given, alert the user and exit the program
     if(len(sys.argv) > 1):
         serverPort = int(sys.argv[1])
@@ -382,6 +381,7 @@ def main():
         print("Loading contacts from list: " + sys.argv[2] + "...")
         load(sys.argv[2])
     
+
     #listen for clients
     p = Process(target=listen)
     p.start()
