@@ -19,10 +19,11 @@ class List:
         self.members = []
 
 class Person:
-    def __init__(self, data):
+    def __init__(self, data, reg):
         self.name = data[0]
         self.ip = data[1]
         self.port = data[2]
+        self.registered = reg
 
 global p
 serverIP = ""
@@ -60,7 +61,7 @@ def load(filename):
         usercount = int(f.readline().strip())
         #add each user to the address book
         for i in range(usercount):
-            person = Person(f.readline().strip().split(","))
+            person = Person(f.readline().strip().split(","), False)
             #If a user's IP is not a valid address, fail.
             if(re.match(IPv4, person.ip) is None or not (1023 < int(person.port) and int(person.port) < 65535)):
                 dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
@@ -77,7 +78,7 @@ def load(filename):
             contact_lists.append(lst)
             #add each user in the contact list to the respective list
             for k in range(contact_lists[l].count):
-                contact = Person(f.readline().strip().split(","))
+                contact = Person(f.readline().strip().split(","), False)
                 #If a user's IP is not a valid address, fail.
                 if(re.match(IPv4, contact.ip) == None or not (1023 < int(contact.port) and int(contact.port) < 65535)):
                     dialog("Failed to load configuration file \033[1m" + filename + "\033[0m.")
@@ -107,20 +108,34 @@ def register(name, ip, port):
         dialog("Failed to add user \033[1m" + name + "\033[0m.")
         return "FAILURE"
     #check the ip/port combo with the server's
+    '''
     if(ip == serverIP and port == serverPort):
         dialog("Failed to add user \033[1m" + name + "\033[0m.")
         return "FAILURE"
+    '''
     #check the user info with existing user info for conflicts
-    global usercount, contact_names
+    global usercount, contact_names, listcount, contact_lists
+    login = False
     for i in range(usercount):
         #check if the username is taken or not.
-        if(contact_names[i].name == name or (contact_names[i].ip == ip and contact_names[i].port == port)):
+        if(not contact_names[i].registered and contact_names[i].name == name and contact_names[i].ip == ip and contact_names[i].port == port):
+            dialog("User: \0331m" + name + "\0330m is logging in...")
+            #mark user as logged in
+            contact_names[i].registered = True
+            #update contact lists to reflect login status
+            for l in range(listcount):
+                for m in range(contact_lists[l].count):
+                    if(contact_lists[l].members[m].name == name):
+                        contact_lists[l].members[m].registered = True
+            login = True
+        elif(contact_names[i].name == name or (contact_names[i].ip == ip and contact_names[i].port == port)):
             dialog("Failed to add user \033[1m" + name + "\033[0m.")
             return "FAILURE"
     #the user is not present, add them to the list.
-    contact = Person([name, ip, port])
-    contact_names.append(contact)
-    usercount = usercount + 1
+    if(not login):
+        contact = Person([name, ip, port],True)
+        contact_names.append(contact)
+        usercount = usercount + 1
     print_config()
     return "SUCCESS"
 
@@ -259,7 +274,7 @@ def im_start(list_name, name):
                     contact_lists[l].initiator = name
                     code = "0," + contact_lists[l].name + "\n"
                     for user in contact_lists[l].members:
-                        if(user.name != name):
+                        if(user.name != name and user.registered):
                             code += user.ip + "," + user.port + "\n"
                     code += contact_lists[l].members[k].ip + "," + contact_lists[l].members[k].port + "\n---\n"
                     dialog("Successfully started IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")

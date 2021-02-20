@@ -2,12 +2,10 @@
 
 import sys
 import re
-import psutil
 from socket import *
 from multiprocessing import Process, Value, Manager
 from time import sleep
 import os
-import ctypes
 
 #regular expression to match an IPv4 address
 IPv4 = "^(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
@@ -36,7 +34,7 @@ def recv(fileno):
             (header, msg) = mesg.split("---")
             lstname = mesg.split("\n")[0].split(',')[1]
             ip = d[1]
-
+            
             head = header.split("\n")
             (hednum, lst) = head[0].split(",")
             hednum = int(hednum)
@@ -60,6 +58,7 @@ def recv(fileno):
         else:
             print("\033[35m" + mesg + "\033[0m")
             if(v.value == 2 and mesg == "FAILURE"):
+                print("failed to register")
                 d[2] = ""
                 reg.value = 0
                 #myport.value = -1
@@ -91,11 +90,14 @@ def verify_input(cmd):
                 if(re.match("^[A-Za-z0-9_]+$", cmd[1]) != None):
                     test = 0
                     try:
-                        clientSocket.bind(('', int(cmd[3])))
-                    except Exception:
+                        probe = socket(AF_INET,SOCK_DGRAM)
+                        probe.bind(('', int(cmd[3])))
+                    except Exception as e:
                         test = 1
+                    probe.close()
                     if(test == 0):
                         if(myport.value == -1):
+                            clientSocket.bind(('',int(cmd[3])))
                             reg.value = 1
                             d[2] = cmd[1]
                             d[1] = cmd[2]
@@ -194,8 +196,7 @@ def servcmd(fileno):
                 clientSocket.sendto(msg.encode(), (serverip, serverport,))
     
 def main():
-    global clientSocket, serverip, serverport, p, pr, v, done, rip
-    print(AF_INET.__dict__)
+    global d, clientSocket, serverip, serverport, p, pr, v, done, rip
     if(len(sys.argv) != 3):
         print("\033[91m[ERROR]\033[0m Must define server ip and port number!\n\t\tFormat: ./client.py <server ip> <server port>")
         sys.exit()
@@ -207,6 +208,9 @@ def main():
         print("Invalid server IP and/or port number.")
         sys.exit()
     clientSocket = socket(AF_INET, SOCK_DGRAM)
+
+
+    #get client ip and save for later
 
     #start listening for incoming messages
     p = Process(target=servcmd, args=(sys.stdin.fileno(),))
