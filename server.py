@@ -15,7 +15,7 @@ class List:
         self.name = arr[0]
         self.count = int(arr[1])
         self.in_chat = False
-        self.initiator = ""
+        self.initiators = []
         self.members = []
 
 class Person:
@@ -118,15 +118,19 @@ def register(name, ip, port):
     login = False
     for i in range(usercount):
         #check if the username is taken or not.
-        if(not contact_names[i].registered and contact_names[i].name == name and contact_names[i].ip == ip and contact_names[i].port == port):
+        if(not contact_names[i].registered and contact_names[i].name == name):
             dialog("User: \0331m" + name + "\0330m is logging in...")
             #mark user as logged in
             contact_names[i].registered = True
+            contact_names[i].ip = ip
+            contact_names[i].port = port
             #update contact lists to reflect login status
             for l in range(listcount):
                 for m in range(contact_lists[l].count):
                     if(contact_lists[l].members[m].name == name):
                         contact_lists[l].members[m].registered = True
+                        contact_lists[l].members[m].ip = ip
+                        contact_lists[l].members[m].port = port
             login = True
         elif(contact_names[i].name == name or (contact_names[i].ip == ip and contact_names[i].port == port)):
             dialog("Failed to add user \033[1m" + name + "\033[0m.")
@@ -269,9 +273,9 @@ def im_start(list_name, name):
         if(contact_lists[l].name == list_name):
             for k in range(contact_lists[l].count):
                 #found list with passed user - set it to chat mode, give initiator list of users
-                if(contact_lists[l].members[k].name == name):
+                if(contact_lists[l].members[k].name == name and name not in contact_lists[l].initiators):
                     contact_lists[l].in_chat = True
-                    contact_lists[l].initiator = name
+                    contact_lists[l].initiators.append(name)
                     code = "0," + contact_lists[l].name + "\n"
                     for user in contact_lists[l].members:
                         if(user.name != name and user.registered):
@@ -292,10 +296,11 @@ def im_complete(list_name, name):
     for l in range(listcount):
         if(list_name == contact_lists[l].name):
             #check if the list is in a chat and the initiator is the same as specified
-            if(contact_lists[l].in_chat and contact_lists[l].initiator == name):
+            if(contact_lists[l].in_chat and name in contact_lists[l].initiators):
                 #credentials matched - remove the list from chat mode
-                contact_lists[l].in_chat = False
-                contact_lists[l].initiator = ""
+                del contact_lists[l].initiators[contact_lists[l].initiators.index(name)]
+                if(len(contact_lists[l].initiators) == 0):
+                    contact_lists[l].in_chat = False
                 dialog("Successfully completed an IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
                 return "SUCCESS"
     dialog("Failed to complete an IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
