@@ -235,6 +235,13 @@ def main():
         print("Invalid server IP and/or port number.")
         sys.exit()
 
+    #Grab the ip address of the machine.
+    #8.8.8.8 just because i know that's google DNS so it likely won't go wrong.
+    ipsock = socket(AF_INET, SOCK_DGRAM)
+    ipsock.connect(("8.8.8.8", 80))
+    ip = ipsock.getsockname()[0]
+    ipsock.close()
+
     clientSocket = socket(AF_INET, SOCK_DGRAM)
     #require the user to register before performing any other commands
     reg.value = 0
@@ -249,7 +256,7 @@ def main():
             print("\033[0m", end='')
             #user wants to register
             #check that the user has a valid ip address and port number
-            if(re.match(IPv4, cmd[2]) != None and 1023 < int(cmd[3]) and int(cmd[3]) < 65535):
+            if(ip == cmd[2] and 1023 < int(cmd[3]) and int(cmd[3]) < 65535):
                 #check that the user has a valid name
                 if(re.match("^[A-Za-z0-9_]+$", cmd[1]) != None):
                     test = 0
@@ -286,7 +293,7 @@ def main():
                 else:
                     print("\033[0mInvalid username.")
             else:
-                print("\033[0mBad port or IP address.")
+                print("\033[0mBad port or not your IP address.")
         else:
             print("\033[0mYou need to register first. Use the syntax:\nregister <username> <ipv4 address> <port>\nAlternantively, type \"quit\" to quit.")
 
