@@ -9,24 +9,44 @@ import os
 
 #regular expression to match an IPv4 address
 IPv4 = "^(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
+
+#regular expression to match a message (plus its properly formatted header and pretty colors too!
 msgre = "^([0-9]+,[A-Za-z0-9_]+\n((2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.(2[0-5][0-5]|1[0-9][0-9]|[1-9][0-9]|[0-9]),(6553[0-4]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9]|[1-5][0-9][0-9][0-9][0-9]|[2-9][0-9][0-9][0-9]|1[1-9][0-9][0-9]|10[3-9][0-9]|102[4-9])\n)+---(\n\033\[34m[A-Za-z0-9_]+\033\[0m> .*)?)"
 
 serverip = ""
 serverport = -1
 manager = Manager()
 d = manager.dict()
+d[4] = "Please enter command.\n> \033[36m"
 myport = Value('i', -1)
 reg = Value('i', 0)
 clientSocket = None
 v = Value('i', -1)
 done = Value('i', 1)
 rip = Value('i', 0)
+msgval = Value('i', 0)
+
+#continuously wait to require input for a message
+#this is here to mitigate blocking message forwarding while waiting for message input.
+def msg_input(fileno):
+    sys.stdin = os.fdopen(fileno)
+    global msg, done
+    while(True):
+        if(msgval.value == 1):
+            d[4] = f"\033[0mPlease enter a message to send to the contact list: \033[1m{d[3]}\033[0m\n> \033[36m"
+            header = d[0]
+            message = input(f"\033[0mPlease enter a message to send to the contact list: \033[1m{d[3]}\033[0m\n> \033[36m")
+            d[4] = "Please enter command.\n> \033[36m"
+            #send the message to the first client in the list
+            send(header, "\033[34m" + d[2] + ">\033[0m " + message)
+            d[0] = ""
+            msgval.value = 0
 
 #continuously wait for input to a socket.
 def recv(fileno):
     #reopen the stdin file descriptor so we can call input in a multithreaded process
     sys.stdin = os.fdopen(fileno)
-    global clientSocket, username, v, done, rip, d, myport, reg
+    global clientSocket, username, v, done, rip, d, myport, reg, msg
     while(True):
         #get the next message
         mesg, clientAddr = clientSocket.recvfrom(2048)
@@ -49,15 +69,14 @@ def recv(fileno):
             if(v.value == 1):
                 v.value = -1
                 #prompt the user to input a message
-                message = input(f"\033[0mPlease enter a message to send to the contact list: \033[1m{lstname}\033[0m\n> \033[36m")
-                #send the message to the first client in the list
-                header = mesg
-                send(header, "\033[34m" + d[2] + ">\033[0m " + message)
+                d[0] = mesg
+                d[3] = lstname
+                msgval.value = 1
             elif(lastip != dstip or lastport != dstport):
                 #the message is not at its last hop, print the message and send off the message
                 print("\033[0m\n" + '-'*25 + "\nNew incoming message to list \033[1m" + lstname + "\033[0m" + msg + "\033[0m\n" + '-'*25)
                 send(header + "---", msg)
-                print("\033[0mPlease enter command.\n> \033[36m", end='')
+                print(f"{d[4]}", end='')
             elif(lastip == dstip and lastport == dstport):
                 #the message is at its last hop, we don't need to print because this receiver sent the message first.
                 #tell the server that the IM-Session is complete
@@ -93,7 +112,6 @@ def send(header, msg):
     newmsg = '\n'.join(head) + msg
     if(dstip != "---"):
         clientSocket.sendto(newmsg.encode(), (dstip, int(dstport),))
-
 
 #Verify whether or not a command is valid. True if yes, False if no
 def verify_input(cmd):
@@ -184,7 +202,6 @@ def verify_input(cmd):
 def servcmd(fileno):
     global serverip, serverport, clientSocket, v, done
     sys.stdin = os.fdopen(fileno)
-    print("Please register first.")
     while(True):
         #if the program is completed with the previous command processing, accept a new command
         if(done.value == 1):
@@ -274,18 +291,24 @@ def main():
             print("\033[0mYou need to register first. Use the syntax:\nregister <username> <ipv4 address> <port>\nAlternantively, type \"quit\" to quit.")
 
 
-    #start listening for incoming messages
+    #start listening for client commands
     p = Process(target=servcmd, args=(sys.stdin.fileno(),))
     p.start()
 
-    #handle client-server messages
+    #handle incoming messages
     pr = Process(target=recv, args=(sys.stdin.fileno(),))
     pr.start()
+
+    #handle IM message inputs
+    ms = Process(target=msg_input, args=(sys.stdin.fileno(),))
+    ms.start()
 
     #wait for the program to kill itself
     while(True):
         if(rip.value == 1):
             #the program kill flag has been raised. Terminate threads and exit.
+            ms.terminate()
+            ms.join()
             p.terminate()
             p.join()
             pr.terminate()

@@ -172,13 +172,18 @@ def query_lists():
 def join(list_name, name):
     dialog("Attempting to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
     global usercount, contact_names, listcount, contact_lists
-    #if the user is in a chat, they cannot exit.
     for lst in contact_lists:
-        if(lst.in_chat):
+        if(lst.name == list_name):
+            #if the list is currently in a chat, it cannot be updated.
+            if(lst.in_chat):
+                dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
+                return "FAILURE"
+            #if the member is already in the list, they cannot be added again.
             for member in lst.members:
                 if(member.name == name):
-                    dialog("Failed to remove user \033[1m" + name + "\033[0m.")
+                    dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
                     return "FAILURE"
+            break
     #find the list, if it doesnt exist, fail.
     for l in range(listcount):
         #list found.
@@ -197,13 +202,11 @@ def join(list_name, name):
 def leave(list_name, name):
     dialog("Attempting to remove user \033[1m" + name + "\033[0m from contact list \033[1m" + list_name + "\033[0m.")
     global contact_lists, contact_names
-    #if the user is in a chat, they cannot exit.
+    #if the list is currently in a chat, it cannot be updated.
     for lst in contact_lists:
-        if(lst.in_chat):
-            for member in lst.members:
-                if(member.name == name):
-                    dialog("Failed to remove user \033[1m" + name + "\033[0m.")
-                    return "FAILURE"
+        if(lst.in_chat and lst.name == list_name):
+            dialog("Failed to add user \033[1m" + name + "\033[0m to list \033[1m" + list_name + "\033[0m.")
+            return "FAILURE"
     for l in range(listcount):
         if(contact_lists[l].name == list_name):
             for k in range(contact_lists[l].count):
