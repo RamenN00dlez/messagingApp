@@ -362,8 +362,6 @@ def command(cmd):
 #continuously check for input
 def listen():
     global serverIP, serverPort, serverSocket
-    serverSocket = socket(AF_INET, SOCK_DGRAM)
-    serverSocket.bind(('', serverPort))
     dialog("\033[92mServer ready to receive...\033[0m")
     while(True):
         #listen for serverside commands while waiting for socket data
@@ -393,7 +391,13 @@ def main():
     if(len(sys.argv) > 2):
         print("Loading contacts from list: " + sys.argv[2] + "...")
         load(sys.argv[2])
-    
+   
+    serverSocket = socket(AF_INET, SOCK_DGRAM)
+    try:
+        serverSocket.bind(('', serverPort))
+    except:
+        print("That port number was already taken, please try another port.")
+        sys.exit(1)
 
     #listen for clients
     p = Process(target=listen)
