@@ -261,16 +261,6 @@ def im_start(list_name, name):
     dialog("Attempting to start an IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
     pas = False
 
-    #make sure the user exists
-    for i in range(usercount):
-        if(contact_names[i].name  == name):
-            pas = True
-            break
-    #if the user did not exist, fail.
-    if(not pas):
-        dialog("Failed to start an IM chat session for \033[1m" + list_name + "\033[0m initiated by \033[1m" + name + "\033[0m.")
-        return "FAILURE"
-
     #make sure the list exists (and if so, that the user is in the list)
     for l in range(listcount):
         if(contact_lists[l].name == list_name):

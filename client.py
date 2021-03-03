@@ -191,6 +191,7 @@ def verify_input(cmd):
         if(re.match("[A-Za-z0-9_]*", cmd[1]) != None):
             return True
         else:
+            print("\033[0mInvalid filename.")
             return False
     else:
         #the command wasn't valid. Tell the user about it
@@ -291,7 +292,7 @@ def main():
                     else:
                         print("\033[0mThat port is already taken.")
                 else:
-                    print("\033[0mInvalid username.")
+                    print("\033[0mInvalid username. only upper/lowercase letters, numbers, and underscores allowed.")
             else:
                 print("\033[0mBad port or not your IP address.")
         else:
