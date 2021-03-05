@@ -55,7 +55,13 @@ def recv(fileno):
         #check if the message is a p2p IM message
         if(re.match(msgre, mesg) != None):
             #split the header and the contents
-            (header, msg) = mesg.split("---")
+            meg = mesg.split("---")
+            header = meg[0]
+            msg = meg[1] 
+            #reappend --- characters and bodie segments after those.
+            if(len(meg) > 2):
+                msg += "---"
+                msg += '---'.join(meg[2::])
             lstname = mesg.split("\n")[0].split(',')[1]
             ip = d[1]
             
